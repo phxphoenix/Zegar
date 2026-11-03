@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Nauka Zegara / Clock Learning</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .hand-transition {
+      transition: transform 0.5s cubic-bezier(0.4, 2.08, 0.55, 0.44);
+    }
+    input[type="number"]::-webkit-inner-spin-button,
+    input[type="number"]::-webkit-outer-spin-button {
+      opacity: 1;
+    }
+  </style>
+</head>
+<body class="bg-slate-100 min-h-screen flex items-center justify-center p-4 font-sans text-slate-800">
+
+  <div class="bg-white rounded-3xl shadow-xl max-w-4xl w-full p-6 md:p-8 grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+    
+    <!-- Lewa kolumna: Zegar SVG -->
+    <div class="lg:col-span-6 flex flex-col items-center">
+      <div class="flex items-center justify-between w-full mb-4">
+        <span id="score-badge" class="bg-indigo-100 text-indigo-700 font-bold px-4 py-1.5 rounded-full text-sm">
+          Wynik: 0 / 0
+        </span>
+        <div class="flex gap-2">
+          <button id="lang-btn" onclick="toggleLang()" class="bg-slate-200 hover:bg-slate-300 text-slate-700 font-semibold px-3 py-1.5 rounded-xl text-sm transition">
+            🌐 PL
+          </button>
+          <button id="toggle-panel-btn" onclick="togglePanel()" class="bg-amber-100 hover:bg-amber-200 text-amber-800 font-semibold px-3 py-1.5 rounded-xl text-sm transition">
+            👁️ Ukryj panel
+          </button>
+        </div>
+      </div>
+
+      <!-- Tarcza zegara SVG -->
+      <div class="relative w-72 h-72 sm:w-80 sm:h-80">
+        <svg id="clock-svg" viewBox="0 0 200 200" class="w-full h-full drop-shadow-md">
+          <!-- Obudowa zegara -->
+          <circle cx="100" cy="100" r="95" fill="#ffffff" stroke="#334155" stroke-width="6" />
+          <circle cx="100" cy="100" r="88" fill="none" stroke="#e2e8f0" stroke-width="1" />
+          
+          <!-- Podziałki i cyfry wygenerowane przez JS -->
+          <g id="clock-marks"></g>
+          <g id="clock-numbers"></g>
+
+          <!-- Wskazówka godzinowa (krótka, niebieska) -->
+          <line id="hour-hand" x1="100" y1="100" x2="100" y2="52" stroke="#2563eb" stroke-width="6" stroke-linecap="round" class="hand-transition" transform="rotate(0 100 100)" />
+          
+          <!-- Wskazówka minutowa (długa, czerwona) -->
+          <line id="minute-hand" x1="100" y1="100" x2="100" y2="28" stroke="#ef4444" stroke-width="4" stroke-linecap="round" class="hand-transition" transform="rotate(0 100 100)" />
+
+          <!-- Środek zegara -->
+          <circle cx="100" cy="100" r="5" fill="#1e293b" />
+          <circle cx="100" cy="100" r="2" fill="#f8fafc" />
+        </svg>
+      </div>
+
+      <div class="flex gap-4 mt-3 text-xs font-medium text-slate-500">
+        <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-blue-600 inline-block"></span> <span id="lbl-hour-hand">Godzinowa</span></span>
+        <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-red-500 inline-block"></span> <span id="lbl-min-hand">Minutowa</span></span>
+      </div>
+    </div>
+
+    <!-- Prawa kolumna: Panel sterowania i odpowiedzi -->
+    <div class="lg:col-span-6 flex flex-col gap-5">
+      
+      <!-- Panel Rodzica / Nauczyciela -->
+      <div id="teacher-panel" class="bg-slate-50 border border-slate-200 rounded-2xl p-4 flex flex-col gap-4">
+        <div class="flex items-center justify-between">
+          <h2 id="panel-title" class="font-bold text-slate-700 text-sm uppercase tracking-wider">Ustaw czas zegara</h2>
+          <button onclick="randomTime()" id="btn-random" class="text-xs bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-3 py-1.5 rounded-lg transition">
+            🎲 Losuj czas
+          </button>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label id="lbl-hours" class="block text-xs font-semibold text-slate-500 mb-1">Godzina (0-23)</label>
+            <input id="input-hour" type="number" min="0" max="23" value="9" class="w-full text-center text-xl font-bold bg-white border border-slate-300 rounded-xl py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+          </div>
+          <div>
+            <label id="lbl-minutes" class="block text-xs font-semibold text-slate-500 mb-1">Minuty (0-59)</label>
+            <input id="input-minute" type="number" min="0" max="59" value="15" class="w-full text-center text-xl font-bold bg-white border border-slate-300 rounded-xl py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+          </div>
+        </div>
+
+        <div class="flex flex-wrap gap-2 items-center justify-between pt-1">
+          <select id="mode-select" onchange="generateQuestion()" class="bg-white border border-slate-300 rounded-xl px-3 py-2 text-sm font-medium focus:outline-none">
+            <option value="digital">Cyfrowy (np. 09:15 / 21:15)</option>
+            <option value="words">Słownie (np. piętnaście po dziewiątej)</option>
+          </select>
+
+          <div class="flex gap-2">
+            <button onclick="applyManualTime(false)" id="btn-apply" class="bg-slate-800 hover:bg-slate-900 text-white text-sm font-semibold px-4 py-2 rounded-xl transition">
+              Ustaw
+            </button>
+            <button onclick="applyManualTime(true)" id="btn-apply-hide" class="bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold px-4 py-2 rounded-xl transition">
+              Ustaw i ukryj
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sekcja pytań i 4 odpowiedzi -->
+      <div>
+        <h3 id="question-title" class="text-lg font-bold text-slate-800 mb-3 text-center lg:text-left">
+          Która godzina jest na zegarze?
+        </h3>
+        <div id="options-container" class="grid grid-cols-1 sm:grid-cols-2 gap-3"></div>
+        <div id="feedback-box" class="mt-4 min-h-[2.5rem] flex items-center justify-center lg:justify-start font-bold text-sm"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    const state = {
+      h: 9,
+      m: 15,
+      lang: 'pl',
+      panelVisible: true,
+      score: 0,
+      total: 0,
+      answered: false,
+      options: [],
+      correctAnswer: ''
+    };
+
+    const i18n = {
+      pl: {
+        score: 'Wynik',
+        hidePanel: '👁️ Ukryj panel',
+        showPanel: '👁️ Pokaż panel',
+        hourHand: 'Godzinowa (krótka)',
+        minHand: 'Minutowa (długa)',
+        panelTitle: 'Ustaw czas zegara',
+        randomBtn: '🎲 Losuj czas',
+        lblHours: 'Godzina (0-23)',
+        lblMinutes: 'Minuty (0-59)',
+        modeDigital: 'Cyfrowy (09:15 / 21:15)',
+        modeWords: 'Słownie (po polsku)',
+        btnApply: 'Ustaw',
+        btnApplyHide: 'Ustaw i ukryj',
+        question: 'Która godzina jest na zegarze?',
+        correct: '✅ Brawo! To poprawna odpowiedź!',
+        wrong: '❌ Spróbuj jeszcze raz!'
+      },
+      en: {
+        score: 'Score',
+        hidePanel: '👁️ Hide panel',
+        showPanel: '👁️ Show panel',
+        hourHand: 'Hour hand (short)',
+        minHand: 'Minute hand (long)',
+        panelTitle: 'Set clock time',
+        randomBtn: '🎲 Random time',
+        lblHours: 'Hour (0-23)',
+        lblMinutes: 'Minutes (0-59)',
+        modeDigital: 'Digital (09:15 / 21:15)',
+        modeWords: 'In words (English)',
+        btnApply: 'Set time',
+        btnApplyHide: 'Set & Hide',
+        question: 'What time is it on the clock?',
+        correct: '✅ Great job! Correct answer!',
+        wrong: '❌ Try again!'
+      }
+    };
+
+    // Rysowanie podziałki i cyfr na tarczy
+    function initClockFace() {
+      const marksGroup = document.getElementById('clock-marks');
+      const numbersGroup = document.getElementById('clock-numbers');
+
+      for (let i = 0; i < 60; i++) {
+        const angle = (i * 6) * (Math.PI / 180);
+        const isHour = i % 5 === 0;
+        const rOuter = 88;
+        const rInner = isHour ? 78 : 83;
+
+        const x1 = 100 + rInner * Math.sin(angle);
+        const y1 = 100 - rInner * Math.cos(angle);
+        const x2 = 100 + rOuter * Math.sin(angle);
+        const y2 = 100 - rOuter * Math.cos(angle);
+
+        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        line.setAttribute('x1', x1);
+        line.setAttribute('y1', y1);
+        line.setAttribute('x2', x2);
+        line.setAttribute('y2', y2);
+        line.setAttribute('stroke', isHour ? '#1e293b' : '#94a3b8');
+        line.setAttribute('stroke-width', isHour ? '2.5' : '1');
+        line.setAttribute('stroke-linecap', 'round');
+        marksGroup.appendChild(line);
+      }
+
+      for (let num = 1; num <= 12; num++) {
+        const angle = (num * 30) * (Math.PI / 180);
+        const rText = 64;
+        const x = 100 + rText * Math.sin(angle);
+        const y = 100 - rText * Math.cos(angle);
+
+        const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        text.setAttribute('x', x);
+        text.setAttribute('y', y);
+        text.setAttribute('text-anchor', 'middle');
+        text.setAttribute('dominant-baseline', 'central');
+        text.setAttribute('fill', '#0f172a');
+        text.setAttribute('font-size', '14');
+        text.setAttribute('font-weight', '700');
+        text.textContent = num;
+        numbersGroup.appendChild(text);
+      }
+    }
+
+    // Formatowanie cyfrowe
+    function formatDigital(h, m) {
+      const h12 = h % 12 === 0 ? 12 : h % 12;
+      const h24 = (h12 === 12 ? 0 : h12 + 12);
+      const pad = (n) => String(n).padStart(2, '0');
+      const first = `${pad(h12 === 12 ? 12 : h12)}:${pad(m)}`;
+      const second = `${pad(h24)}:${pad(m)}`;
+      return `${first} (${second})`;
+    }
+
+    // Formatowanie słowne PL / EN
+    function formatWords(h, m, lang) {
+      const h12 = h % 12 === 0 ? 12 : h % 12;
+      const nextH = (h12 % 12) + 1;
+
+      if (lang === 'en') {
+        const nums = ['', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve'];
+        if (m === 0) return `${nums[h12]} o'clock`;
+        if (m === 15) return `quarter past ${nums[h12]}`;
+        if (m === 30) return `half past ${nums[h12]}`;
+        if (m === 45) return `quarter to ${nums[nextH]}`;
+        if (m < 30) return `${m} past ${nums[h12]}`;
+        return `${60 - m} to ${nums[nextH]}`;
+      }
+
+      const nom = ['', ' pierwsza', 'druga', 'trzecia', 'czwarta', 'piąta', 'szósta', 'siódma', 'ósma', 'dziewiąta', 'dziesiąta', 'jedenasta', 'dwunasta'].map(s => s.trim());
+      const loc = ['', 'pierwszej', 'drugiej', 'trzeciej', 'czwartej', 'piątej', 'szóstej', 'siódmej', 'ósmej', 'dziewiątej', 'dziesiątej', 'jedenastej', 'dwunastej'];
+
+      if (m === 0) return `pełna ${nom[h12]}`;
+      if (m === 15) return `kwadrans po ${loc[h12]}`;
+      if (m === 30) return `wpół do ${loc[nextH]}`;
+      if (m === 45) return `za kwadrans ${nom[nextH]}`;
+      if (m < 30) return `${m} min po ${loc[h12]}`;
+      return `za ${60 - m} min ${nom[nextH]}`;
+    }
+
+    function formatOption(h, m) {
+      const mode = document.getElementById('mode-select').value;
+      const normH = ((h % 24) + 24) % 24;
+      const normM = ((m % 60) + 60) % 60;
+      return mode === 'digital' ? formatDigital(normH, normM) : formatWords(normH, normM, state.lang);
+    }
+
+    function updateClockHands() {
+      const hourAngle = ((state.h % 12) * 30) + (state.m * 0.5);
+      const minAngle = state.m * 6;
+      document.getElementById('hour-hand').setAttribute('transform', `rotate(${hourAngle} 100 100)`);
+      document.getElementById('minute-hand').setAttribute('transform', `rotate(${minAngle} 100 100)`);
+    }
+
+    function generateQuestion() {
+      state.answered = false;
+      document.getElementById('feedback-box').textContent = '';
+      updateClockHands();
+
+      const correct = formatOption(state.h, state.m);
+      state.correctAnswer = correct;
+
+      // Generowanie wiarygodnych zmyłek (zamiana wskazówek, +/- 5 lub 15 minut, +/- 1 godzina)
+      const candidates = [
+        [Math.floor(state.m / 5) || 12, (state.h % 12) * 5], // Zamiana wskazówek
+        [state.h, (state.m + 5) % 60],
+        [state.h, (state.m + 55) % 60],
+        [(state.h + 1) % 24, state.m],
+        [state.h, (60 - state.m) % 60], // Lustrzane odbicie minut
+        [(state.h + 11) % 24, (state.m + 15) % 60]
+      ];
+
+      const set = new Set([correct]);
+      for (const [ch, cm] of candidates) {
+        if (set.size >= 4) break;
+        set.add(formatOption(ch, cm));
+      }
+
+      while (set.size < 4) {
+        const rh = Math.floor(Math.random() * 12) + 1;
+        const rm = Math.floor(Math.random() * 12) * 5;
+        set.add(formatOption(rh, rm));
+      }
+
+      state.options = Array.from(set).sort(() => Math.random() - 0.5);
+      renderOptions();
+    }
+
+    function renderOptions() {
+      const container = document.getElementById('options-container');
+      container.innerHTML = '';
+
+      state.options.forEach((opt) => {
+        const btn = document.createElement('button');
+        btn.className = 'w-full py-3.5 px-4 rounded-2xl border-2 border-slate-200 bg-white hover:border-indigo-500 hover:bg-indigo-50 font-bold text-slate-700 transition text-center shadow-sm';
+        btn.textContent = opt;
+        btn.onclick = () => checkAnswer(opt, btn);
+        container.appendChild(btn);
+      });
+    }
+
+    function checkAnswer(selected, btnElement) {
+      const dict = i18n[state.lang];
+      const feedback = document.getElementById('feedback-box');
+
+      if (selected === state.correctAnswer) {
+        if (!state.answered) {
+          state.score++;
+          state.total++;
+          state.answered = true;
+        }
+        btnElement.className = 'w-full py-3.5 px-4 rounded-2xl border-2 border-emerald-500 bg-emerald-50 font-bold text-emerald-700 transition text-center shadow-sm';
+        feedback.className = 'mt-4 min-h-[2.5rem] flex items-center justify-center lg:justify-start font-bold text-sm text-emerald-600';
+        feedback.textContent = dict.correct;
+      } else {
+        if (!state.answered) {
+          state.total++;
+          state.answered = true;
+        }
+        btnElement.className = 'w-full py-3.5 px-4 rounded-2xl border-2 border-rose-400 bg-rose-50 font-bold text-rose-700 transition text-center shadow-sm';
+        feedback.className = 'mt-4 min-h-[2.5rem] flex items-center justify-center lg:justify-start font-bold text-sm text-rose-600';
+        feedback.textContent = dict.wrong;
+      }
+      updateLabels();
+    }
+
+    function applyManualTime(hideAfter) {
+      const hVal = parseInt(document.getElementById('input-hour').value, 10);
+      const mVal = parseInt(document.getElementById('input-minute').value, 10);
+      state.h = isNaN(hVal) ? 0 : Math.min(23, Math.max(0, hVal));
+      state.m = isNaN(mVal) ? 0 : Math.min(59, Math.max(0, mVal));
+      document.getElementById('input-hour').value = state.h;
+      document.getElementById('input-minute').value = state.m;
+
+      if (hideAfter && state.panelVisible) {
+        togglePanel();
+      }
+      generateQuestion();
+    }
+
+    function randomTime() {
+      state.h = Math.floor(Math.random() * 24);
+      state.m = Math.floor(Math.random() * 12) * 5; // Losowanie co 5 minut dla czytelności
+      document.getElementById('input-hour').value = state.h;
+      document.getElementById('input-minute').value = state.m;
+      generateQuestion();
+    }
+
+    function togglePanel() {
+      state.panelVisible = !state.panelVisible;
+      document.getElementById('teacher-panel').style.display = state.panelVisible ? 'flex' : 'none';
+      updateLabels();
+    }
+
+    function toggleLang() {
+      state.lang = state.lang === 'pl' ? 'en' : 'pl';
+      updateLabels();
+      generateQuestion();
+    }
+
+    function updateLabels() {
+      const dict = i18n[state.lang];
+      document.getElementById('score-badge').textContent = `${dict.score}: ${state.score} / ${state.total}`;
+      document.getElementById('lang-btn').textContent = `🌐 ${state.lang.toUpperCase()}`;
+      document.getElementById('toggle-panel-btn').textContent = state.panelVisible ? dict.hidePanel : dict.showPanel;
+      document.getElementById('lbl-hour-hand').textContent = dict.hourHand;
+      document.getElementById('lbl-min-hand').textContent = dict.minHand;
+      document.getElementById('panel-title').textContent = dict.panelTitle;
+      document.getElementById('btn-random').textContent = dict.randomBtn;
+      document.getElementById('lbl-hours').textContent = dict.lblHours;
+      document.getElementById('lbl-minutes').textContent = dict.lblMinutes;
+      document.getElementById('mode-select').options[0].textContent = dict.modeDigital;
+      document.getElementById('mode-select').options[1].textContent = dict.modeWords;
+      document.getElementById('btn-apply').textContent = dict.btnApply;
+      document.getElementById('btn-apply-hide').textContent = dict.btnApplyHide;
+      document.getElementById('question-title').textContent = dict.question;
+    }
+
+    // Obsługa klawisza Enter w polach input
+    document.querySelectorAll('input').forEach(inp => {
+      inp.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') applyManualTime(false);
+      });
+    });
+
+    initClockFace();
+    updateLabels();
+    generateQuestion();
+  </script>
+</body>
+</html>
