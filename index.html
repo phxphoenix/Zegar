@@ -29,8 +29,8 @@
           <button id="lang-btn" onclick="toggleLang()" class="bg-slate-200 hover:bg-slate-300 text-slate-700 font-semibold px-3 py-1.5 rounded-xl text-sm transition">
             🌐 PL
           </button>
-          <button id="toggle-panel-btn" onclick="togglePanel()" class="bg-amber-100 hover:bg-amber-200 text-amber-800 font-semibold px-3 py-1.5 rounded-xl text-sm transition">
-            👁️ Ukryj panel
+          <button id="toggle-panel-btn" onclick="togglePanel()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold px-3 py-1.5 rounded-xl text-sm transition border border-slate-200">
+            ⚙️ Pokaż panel
           </button>
         </div>
       </div>
@@ -67,8 +67,8 @@
     <!-- Prawa kolumna: Panel sterowania i odpowiedzi -->
     <div class="lg:col-span-6 flex flex-col gap-5">
       
-      <!-- Panel Rodzica / Nauczyciela -->
-      <div id="teacher-panel" class="bg-slate-50 border border-slate-200 rounded-2xl p-4 flex flex-col gap-4">
+      <!-- Panel Rodzica / Nauczyciela (opcjonalny, domyślnie ukryty) -->
+      <div id="teacher-panel" class="hidden bg-slate-50 border border-slate-200 rounded-2xl p-4 flex-col gap-4">
         <div class="flex items-center justify-between">
           <h2 id="panel-title" class="font-bold text-slate-700 text-sm uppercase tracking-wider">Ustaw czas zegara</h2>
           <button onclick="randomTime()" id="btn-random" class="text-xs bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-3 py-1.5 rounded-lg transition">
@@ -121,19 +121,20 @@
       h: 9,
       m: 15,
       lang: 'pl',
-      panelVisible: true,
+      panelVisible: false,
       score: 0,
       total: 0,
       answered: false,
       options: [],
-      correctAnswer: ''
+      correctAnswer: '',
+      autoNextTimeout: null
     };
 
     const i18n = {
       pl: {
         score: 'Wynik',
         hidePanel: '👁️ Ukryj panel',
-        showPanel: '👁️ Pokaż panel',
+        showPanel: '⚙️ Opcje / Panel',
         hourHand: 'Godzinowa (krótka)',
         minHand: 'Minutowa (długa)',
         panelTitle: 'Ustaw czas zegara',
@@ -145,13 +146,13 @@
         btnApply: 'Ustaw',
         btnApplyHide: 'Ustaw i ukryj',
         question: 'Która godzina jest na zegarze?',
-        correct: '✅ Brawo! To poprawna odpowiedź!',
+        correct: '✅ Brawo! Za chwilę kolejne zadanie...',
         wrong: '❌ Spróbuj jeszcze raz!'
       },
       en: {
         score: 'Score',
         hidePanel: '👁️ Hide panel',
-        showPanel: '👁️ Show panel',
+        showPanel: '⚙️ Options / Panel',
         hourHand: 'Hour hand (short)',
         minHand: 'Minute hand (long)',
         panelTitle: 'Set clock time',
@@ -163,7 +164,7 @@
         btnApply: 'Set time',
         btnApplyHide: 'Set & Hide',
         question: 'What time is it on the clock?',
-        correct: '✅ Great job! Correct answer!',
+        correct: '✅ Great job! Next question coming up...',
         wrong: '❌ Try again!'
       }
     };
@@ -265,6 +266,10 @@
     }
 
     function generateQuestion() {
+      if (state.autoNextTimeout) {
+        clearTimeout(state.autoNextTimeout);
+        state.autoNextTimeout = null;
+      }
       state.answered = false;
       document.getElementById('feedback-box').textContent = '';
       updateClockHands();
@@ -321,9 +326,20 @@
           state.total++;
           state.answered = true;
         }
+
+        // Zablokuj wszystkie przyciski i podświetl poprawny
+        const allBtns = document.querySelectorAll('#options-container button');
+        allBtns.forEach(btn => btn.disabled = true);
+
         btnElement.className = 'w-full py-3.5 px-4 rounded-2xl border-2 border-emerald-500 bg-emerald-50 font-bold text-emerald-700 transition text-center shadow-sm';
-        feedback.className = 'mt-4 min-h-[2.5rem] flex items-center justify-center lg:justify-start font-bold text-sm text-emerald-600';
+        feedback.className = 'mt-4 min-h-[2.5rem] flex items-center justify-center lg:justify-start font-bold text-sm text-emerald-600 animate-pulse';
         feedback.textContent = dict.correct;
+
+        // Automatyczne przejście do kolejnego wariantu po krótkiej pauzie (1.2s)
+        if (state.autoNextTimeout) clearTimeout(state.autoNextTimeout);
+        state.autoNextTimeout = setTimeout(() => {
+          randomTime();
+        }, 1200);
       } else {
         if (!state.answered) {
           state.total++;
@@ -360,7 +376,14 @@
 
     function togglePanel() {
       state.panelVisible = !state.panelVisible;
-      document.getElementById('teacher-panel').style.display = state.panelVisible ? 'flex' : 'none';
+      const panel = document.getElementById('teacher-panel');
+      if (state.panelVisible) {
+        panel.classList.remove('hidden');
+        panel.classList.add('flex');
+      } else {
+        panel.classList.remove('flex');
+        panel.classList.add('hidden');
+      }
       updateLabels();
     }
 
@@ -374,7 +397,12 @@
       const dict = i18n[state.lang];
       document.getElementById('score-badge').textContent = `${dict.score}: ${state.score} / ${state.total}`;
       document.getElementById('lang-btn').textContent = `🌐 ${state.lang.toUpperCase()}`;
-      document.getElementById('toggle-panel-btn').textContent = state.panelVisible ? dict.hidePanel : dict.showPanel;
+      const toggleBtn = document.getElementById('toggle-panel-btn');
+      toggleBtn.textContent = state.panelVisible ? dict.hidePanel : dict.showPanel;
+      toggleBtn.className = state.panelVisible 
+        ? "bg-amber-100 hover:bg-amber-200 text-amber-800 font-semibold px-3 py-1.5 rounded-xl text-sm transition"
+        : "bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold px-3 py-1.5 rounded-xl text-sm transition border border-slate-200";
+
       document.getElementById('lbl-hour-hand').textContent = dict.hourHand;
       document.getElementById('lbl-min-hand').textContent = dict.minHand;
       document.getElementById('panel-title').textContent = dict.panelTitle;
