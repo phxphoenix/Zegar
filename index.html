@@ -35,11 +35,14 @@
     
     <!-- Lewa kolumna: Zegar SVG -->
     <div class="lg:col-span-6 flex flex-col items-center">
-      <div class="flex items-center justify-between w-full mb-3">
+      <div class="flex flex-wrap items-center justify-between gap-2 w-full mb-3">
         <span id="score-badge" class="bg-indigo-100 text-indigo-700 font-bold px-4 py-1.5 rounded-full text-sm">
-          Wynik: 0 / 0
+          🔥 Wynik: 0
         </span>
-        <div class="flex gap-2">
+        <div class="flex flex-wrap gap-1.5 sm:gap-2">
+          <button id="ranking-btn" onclick="openRankingModal(false)" class="bg-amber-100 hover:bg-amber-200 text-amber-900 font-semibold px-3 py-1.5 rounded-xl text-sm transition border border-amber-300">
+            🏆 Ranking
+          </button>
           <button id="lang-btn" onclick="toggleLang()" class="bg-slate-200 hover:bg-slate-300 text-slate-700 font-semibold px-3 py-1.5 rounded-xl text-sm transition">
             🌐 PL
           </button>
@@ -138,23 +141,98 @@
     </div>
   </div>
 
+  <!-- Modal Rankingu Top 10 -->
+  <div id="ranking-modal" onclick="handleModalBackdropClick(event)" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm items-center justify-center p-4">
+    <div class="bg-white rounded-3xl shadow-2xl max-w-lg w-full p-6 sm:p-8 max-h-[90vh] flex flex-col border border-slate-100">
+      <div class="flex items-center justify-between mb-4">
+        <h2 id="ranking-modal-title" class="text-xl sm:text-2xl font-extrabold text-slate-800 flex items-center gap-2">
+          🏆 Ranking Top 10
+        </h2>
+        <button onclick="closeRankingModal()" aria-label="Close" class="w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold flex items-center justify-center transition">
+          ✕
+        </button>
+      </div>
+
+      <!-- Formularz wpisania imienia (widoczny tylko po zakwalifikowaniu do Top 10) -->
+      <div id="new-score-section" class="hidden bg-amber-50 border-2 border-amber-300 rounded-2xl p-4 mb-4">
+        <p id="new-score-msg" class="text-sm sm:text-base font-bold text-amber-900 mb-3">
+          🎉 Brawo! Twój wynik daje miejsce w Top 10!
+        </p>
+        <div class="flex flex-col sm:flex-row gap-2">
+          <input
+            id="player-name-input"
+            type="text"
+            maxlength="16"
+            placeholder="Wpisz swoje imię..."
+            class="flex-1 bg-white border border-amber-300 rounded-xl px-3.5 py-2.5 text-sm font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500"
+          />
+          <button
+            id="save-score-btn"
+            onclick="submitTop10Score()"
+            class="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-bold px-5 py-2.5 rounded-xl text-sm transition shadow-sm"
+          >
+            Zapisz
+          </button>
+        </div>
+      </div>
+
+      <!-- Lista Top 10 -->
+      <div id="ranking-list-container" class="overflow-y-auto flex-1 space-y-2 pr-1 min-h-[220px]"></div>
+
+      <!-- Stopka statusu synchronizacji -->
+      <div class="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400">
+        <span id="ranking-sync-status"></span>
+        <button id="ranking-close-btn" onclick="closeRankingModal()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold px-4 py-1.5 rounded-xl transition">
+          Zamknij
+        </button>
+      </div>
+    </div>
+  </div>
+
   <script>
+    // =========================================================================
+    // KONFIGURACJA FIREBASE REALTIME DATABASE
+    // =========================================================================
+    const FIREBASE_DB_URL = 'https://zegar-eda05-default-rtdb.europe-west1.firebasedatabase.app';
+
+    const LOCAL_STORAGE_CACHE_KEY = 'zegar_leaderboard_top10_v1';
+    const LOCAL_STORAGE_NAME_KEY = 'zegar_last_player_name_v1';
+
     const state = {
       h: 9,
       m: 15,
       lang: 'pl',
       panelVisible: false,
       score: 0,
-      total: 0,
       answered: false,
       options: [],
       correctAnswer: '',
-      autoNextTimeout: null
+      autoNextTimeout: null,
+      leaderboard: [],
+      pendingScore: null, // { score: number, mode: 'digital' | 'words' }
+      lastSavedId: null,
+      isSavingScore: false
     };
 
     const i18n = {
       pl: {
-        score: 'Wynik',
+        score: '🔥 Wynik',
+        rankingBtn: '🏆 Ranking',
+        rankingTitle: '🏆 Ranking Top 10',
+        newRecordMsg: (pts) => `🎉 Brawo! Wynik ${pts} pkt daje miejsce w Top 10! Wpisz imię:`,
+        namePlaceholder: 'Wpisz swoje imię...',
+        saveBtn: 'Zapisz',
+        savingBtn: 'Zapisywanie...',
+        closeBtn: 'Zamknij',
+        emptyRanking: 'Brak zapisanych wyników. Rozwiąż zadania i bądź pierwszy!',
+        loadingRanking: '⏳ Pobieranie rankingu...',
+        ptsUnit: 'pkt',
+        modeBadgeDigital: '🔢 Cyfrowy',
+        modeBadgeWords: '💬 Słownie',
+        syncCloudOk: '☁️ Wspólny ranking online (Firebase)',
+        syncLocalFallback: '💾 Tryb lokalny (uzupełnij FIREBASE_DB_URL dla synchronizacji)',
+        syncCloudError: '⚠️ Błąd połączenia z chmurą – wyświetlono kopię lokalną',
+        defaultPlayerName: 'Gracz',
         hidePanel: '👁️ Ukryj panel',
         showPanel: '⚙️ Opcje / Panel',
         hourHand: 'Godzinowa (krótka)',
@@ -169,7 +247,8 @@
         btnApplyHide: 'Ustaw i ukryj',
         question: 'Która godzina jest na zegarze?',
         correct: '✅ Brawo! Za chwilę kolejne zadanie...',
-        wrong: '❌ Spróbuj jeszcze raz!',
+        wrong: '❌ Błąd! Seria wyzerowana – spróbuj wskazać poprawną godzinę.',
+        wrongWithScore: (pts) => `❌ Błąd! Koniec serii (twój wynik: ${pts} pkt). Spróbuj jeszcze raz!`,
         periods: {
           night: 'W nocy',
           morning: 'Rano',
@@ -178,7 +257,23 @@
         }
       },
       en: {
-        score: 'Score',
+        score: '🔥 Score',
+        rankingBtn: '🏆 Ranking',
+        rankingTitle: '🏆 Top 10 Leaderboard',
+        newRecordMsg: (pts) => `🎉 Awesome! ${pts} pts makes the Top 10! Enter your name:`,
+        namePlaceholder: 'Enter your name...',
+        saveBtn: 'Save',
+        savingBtn: 'Saving...',
+        closeBtn: 'Close',
+        emptyRanking: 'No scores yet. Answer questions and be the first!',
+        loadingRanking: '⏳ Loading leaderboard...',
+        ptsUnit: 'pts',
+        modeBadgeDigital: '🔢 Digital',
+        modeBadgeWords: '💬 Words',
+        syncCloudOk: '☁️ Shared online leaderboard (Firebase)',
+        syncLocalFallback: '💾 Local mode (set FIREBASE_DB_URL for cloud sync)',
+        syncCloudError: '⚠️ Cloud connection error – showing local backup',
+        defaultPlayerName: 'Player',
         hidePanel: '👁️ Hide panel',
         showPanel: '⚙️ Options / Panel',
         hourHand: 'Hour hand (short)',
@@ -193,7 +288,8 @@
         btnApplyHide: 'Set & Hide',
         question: 'What time is it on the clock?',
         correct: '✅ Great job! Next question coming up...',
-        wrong: '❌ Try again!',
+        wrong: '❌ Wrong! Streak reset – try to find the right time.',
+        wrongWithScore: (pts) => `❌ Wrong! Streak ended (your score: ${pts} pts). Try again!`,
         periods: {
           night: 'At night',
           morning: 'In the morning',
@@ -202,6 +298,263 @@
         }
       }
     };
+
+    // =========================================================================
+    // OBSŁUGA RANKINGU (FIREBASE REST API + LOCALSTORAGE FALLBACK)
+    // =========================================================================
+    function getFirebaseEndpoint() {
+      const trimmed = (FIREBASE_DB_URL || '').trim().replace(/\/+$/, '');
+      if (!trimmed) return null;
+      return `${trimmed}/leaderboard.json`;
+    }
+
+    function loadLocalCache() {
+      try {
+        const raw = localStorage.getItem(LOCAL_STORAGE_CACHE_KEY);
+        if (!raw) return [];
+        const parsed = JSON.parse(raw);
+        return Array.isArray(parsed) ? sortLeaderboard(parsed) : [];
+      } catch (e) {
+        return [];
+      }
+    }
+
+    function saveLocalCache(list) {
+      try {
+        localStorage.setItem(LOCAL_STORAGE_CACHE_KEY, JSON.stringify(list));
+      } catch (e) {
+        // Ignoruj błędy przepełnienia/prywatności localStorage
+      }
+    }
+
+    // Sortowanie: wyższy wynik wyżej; przy remisie nowszy wynik wyżej (spychając najstarszy z tym samym wynikiem)
+    function sortLeaderboard(list) {
+      return (list || [])
+        .filter(item => item && typeof item.score === 'number' && item.score > 0)
+        .sort((a, b) => {
+          if (b.score !== a.score) return b.score - a.score;
+          const timeA = a.date ? new Date(a.date).getTime() : 0;
+          const timeB = b.date ? new Date(b.date).getTime() : 0;
+          return timeB - timeA;
+        })
+        .slice(0, 10);
+    }
+
+    function qualifiesForTop10(score, list) {
+      if (!score || score <= 0) return false;
+      const sorted = sortLeaderboard(list);
+      if (sorted.length < 10) return true;
+      return score >= sorted[sorted.length - 1].score;
+    }
+
+    async function fetchLeaderboard() {
+      const endpoint = getFirebaseEndpoint();
+      const dict = i18n[state.lang];
+      const statusEl = document.getElementById('ranking-sync-status');
+
+      if (!endpoint) {
+        state.leaderboard = loadLocalCache();
+        if (statusEl) statusEl.textContent = dict.syncLocalFallback;
+        return state.leaderboard;
+      }
+
+      try {
+        const res = await fetch(endpoint, { cache: 'no-store' });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        const rawList = Array.isArray(data) ? data : Object.values(data || {});
+        const sorted = sortLeaderboard(rawList);
+        state.leaderboard = sorted;
+        saveLocalCache(sorted);
+        if (statusEl) statusEl.textContent = dict.syncCloudOk;
+        return sorted;
+      } catch (err) {
+        console.warn('Firebase fetch fallback to local cache:', err);
+        state.leaderboard = loadLocalCache();
+        if (statusEl) statusEl.textContent = dict.syncCloudError;
+        return state.leaderboard;
+      }
+    }
+
+    async function saveEntryToLeaderboard(newEntry) {
+      const endpoint = getFirebaseEndpoint();
+      const currentList = await fetchLeaderboard();
+      const updated = sortLeaderboard([newEntry, ...currentList]);
+      state.leaderboard = updated;
+      saveLocalCache(updated);
+
+      if (endpoint) {
+        try {
+          const res = await fetch(endpoint, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updated)
+          });
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        } catch (err) {
+          console.error('Failed to save leaderboard to Firebase:', err);
+        }
+      }
+      return updated;
+    }
+
+    function formatShortDate(isoStr) {
+      if (!isoStr) return '';
+      const d = new Date(isoStr);
+      if (isNaN(d.getTime())) return '';
+      const pad = (n) => String(n).padStart(2, '0');
+      return `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()}`;
+    }
+
+    function renderRankingList() {
+      const container = document.getElementById('ranking-list-container');
+      const dict = i18n[state.lang];
+      container.innerHTML = '';
+
+      if (!state.leaderboard || state.leaderboard.length === 0) {
+        const emptyDiv = document.createElement('div');
+        emptyDiv.className = 'text-center py-10 text-slate-400 font-medium text-sm';
+        emptyDiv.textContent = dict.emptyRanking;
+        container.appendChild(emptyDiv);
+        return;
+      }
+
+      const medals = ['🥇', '🥈', '🥉'];
+
+      state.leaderboard.forEach((entry, idx) => {
+        const isJustSaved = state.lastSavedId && entry.id === state.lastSavedId;
+        const row = document.createElement('div');
+        row.className = `flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-2xl border transition ${
+          isJustSaved
+            ? 'bg-amber-50 border-amber-400 ring-2 ring-amber-300'
+            : idx < 3
+            ? 'bg-slate-50 border-slate-200'
+            : 'bg-white border-slate-100'
+        }`;
+
+        // Lewa strona: miejsce + imię + tryb + data
+        const left = document.createElement('div');
+        left.className = 'flex items-center gap-3 min-w-0';
+
+        const posBadge = document.createElement('span');
+        posBadge.className = 'w-7 text-center font-extrabold text-base shrink-0';
+        posBadge.textContent = idx < 3 ? medals[idx] : `${idx + 1}.`;
+
+        const infoCol = document.createElement('div');
+        infoCol.className = 'min-w-0';
+
+        const nameEl = document.createElement('div');
+        nameEl.className = 'font-bold text-slate-800 text-sm sm:text-base truncate';
+        nameEl.textContent = entry.name || dict.defaultPlayerName;
+
+        const metaEl = document.createElement('div');
+        metaEl.className = 'flex flex-wrap items-center gap-2 text-xs text-slate-500 mt-0.5';
+
+        const modeSpan = document.createElement('span');
+        modeSpan.className = 'bg-slate-200/70 text-slate-700 px-2 py-0.5 rounded-md font-semibold';
+        modeSpan.textContent = entry.mode === 'words' ? dict.modeBadgeWords : dict.modeBadgeDigital;
+
+        const dateSpan = document.createElement('span');
+        dateSpan.textContent = formatShortDate(entry.date);
+
+        metaEl.appendChild(modeSpan);
+        if (dateSpan.textContent) metaEl.appendChild(dateSpan);
+
+        infoCol.appendChild(nameEl);
+        infoCol.appendChild(metaEl);
+
+        left.appendChild(posBadge);
+        left.appendChild(infoCol);
+
+        // Prawa strona: punkty
+        const scoreBadge = document.createElement('span');
+        scoreBadge.className = 'bg-indigo-100 text-indigo-700 font-extrabold px-3 py-1 rounded-full text-sm shrink-0';
+        scoreBadge.textContent = `${entry.score} ${dict.ptsUnit}`;
+
+        row.appendChild(left);
+        row.appendChild(scoreBadge);
+        container.appendChild(row);
+      });
+    }
+
+    async function openRankingModal(withNewScoreForm = false) {
+      const modal = document.getElementById('ranking-modal');
+      const formSection = document.getElementById('new-score-section');
+      const nameInput = document.getElementById('player-name-input');
+      const newScoreMsg = document.getElementById('new-score-msg');
+      const container = document.getElementById('ranking-list-container');
+      const dict = i18n[state.lang];
+
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+
+      if (withNewScoreForm && state.pendingScore) {
+        formSection.classList.remove('hidden');
+        newScoreMsg.textContent = dict.newRecordMsg(state.pendingScore.score);
+        try {
+          nameInput.value = localStorage.getItem(LOCAL_STORAGE_NAME_KEY) || '';
+        } catch (e) {
+          nameInput.value = '';
+        }
+        setTimeout(() => nameInput.focus(), 50);
+      } else {
+        formSection.classList.add('hidden');
+      }
+
+      container.innerHTML = `<div class="text-center py-10 text-slate-400 font-medium text-sm">${dict.loadingRanking}</div>`;
+      await fetchLeaderboard();
+      renderRankingList();
+    }
+
+    function closeRankingModal() {
+      const modal = document.getElementById('ranking-modal');
+      modal.classList.remove('flex');
+      modal.classList.add('hidden');
+      state.pendingScore = null;
+    }
+
+    function handleModalBackdropClick(e) {
+      if (e.target.id === 'ranking-modal') {
+        closeRankingModal();
+      }
+    }
+
+    async function submitTop10Score() {
+      if (!state.pendingScore || state.isSavingScore) return;
+      const dict = i18n[state.lang];
+      const nameInput = document.getElementById('player-name-input');
+      const saveBtn = document.getElementById('save-score-btn');
+      const rawName = (nameInput.value || '').trim();
+      const playerName = rawName.slice(0, 16) || dict.defaultPlayerName;
+
+      try {
+        if (rawName) localStorage.setItem(LOCAL_STORAGE_NAME_KEY, playerName);
+      } catch (e) {}
+
+      state.isSavingScore = true;
+      saveBtn.disabled = true;
+      saveBtn.textContent = dict.savingBtn;
+
+      const entryId = `${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+      const newEntry = {
+        id: entryId,
+        name: playerName,
+        score: state.pendingScore.score,
+        mode: state.pendingScore.mode,
+        date: new Date().toISOString()
+      };
+
+      state.lastSavedId = entryId;
+      await saveEntryToLeaderboard(newEntry);
+
+      state.pendingScore = null;
+      state.isSavingScore = false;
+      saveBtn.disabled = false;
+      saveBtn.textContent = dict.saveBtn;
+
+      document.getElementById('new-score-section').classList.add('hidden');
+      renderRankingList();
+    }
 
     // Rysowanie podziałki i cyfr na tarczy
     function initClockFace() {
@@ -335,18 +688,16 @@
       const correct = formatOption(state.h, state.m);
       state.correctAnswer = correct;
 
-      const isDigital = document.getElementById('mode-select').value === 'digital';
       const isPM = state.h >= 12;
 
       // Generowanie wiarygodnych zmyłek
-      // Dla trybu cyfrowego trzymamy się tej samej pory dnia (AM lub PM) lub wariantu 12h/24h z przeciwnej pory dnia
       const candidates = [];
 
-      // Przeciwny wariant 12h vs 24h (np. 15:15 vs 03:15) - idealna zmyłka sprawdzająca zrozumienie pory dnia
+      // Przeciwny wariant 12h vs 24h (np. 15:15 vs 03:15)
       const oppositeH = (state.h + 12) % 24;
       candidates.push([oppositeH, state.m]);
 
-      // Zamiana wskazówek (np. wskazówka godzinowa na pozycji minutowej i odwrotnie)
+      // Zamiana wskazówek
       let swappedH = Math.floor(state.m / 5) || 12;
       if (isPM && swappedH < 12) swappedH += 12;
       else if (!isPM && swappedH === 12) swappedH = 0;
@@ -399,14 +750,13 @@
       });
     }
 
-    function checkAnswer(selected, btnElement) {
+    async function checkAnswer(selected, btnElement) {
       const dict = i18n[state.lang];
       const feedback = document.getElementById('feedback-box');
 
       if (selected === state.correctAnswer) {
         if (!state.answered) {
           state.score++;
-          state.total++;
           state.answered = true;
         }
 
@@ -417,6 +767,7 @@
         btnElement.className = 'option-btn w-full py-3.5 px-4 rounded-2xl border-2 border-emerald-500 bg-emerald-50 font-bold text-emerald-700 transition text-center shadow-sm';
         feedback.className = 'mt-4 min-h-[2.5rem] flex items-center justify-center lg:justify-start font-bold text-sm text-emerald-600 animate-pulse';
         feedback.textContent = dict.correct;
+        updateLabels();
 
         // Automatyczne przejście do kolejnego wariantu po krótkiej pauzie (1.2s)
         if (state.autoNextTimeout) clearTimeout(state.autoNextTimeout);
@@ -424,15 +775,30 @@
           randomTime();
         }, 1200);
       } else {
-        if (!state.answered) {
-          state.total++;
-          state.answered = true;
-        }
+        // Błędna odpowiedź - przeliczamy wynik przy pierwszym błędzie
+        const achievedScore = !state.answered ? state.score : 0;
+        const currentMode = document.getElementById('mode-select').value;
+
+        state.answered = true;
+        state.score = 0;
+
         btnElement.className = 'option-btn w-full py-3.5 px-4 rounded-2xl border-2 border-rose-400 bg-rose-50 font-bold text-rose-700 transition text-center shadow-sm';
         feedback.className = 'mt-4 min-h-[2.5rem] flex items-center justify-center lg:justify-start font-bold text-sm text-rose-600';
-        feedback.textContent = dict.wrong;
+        feedback.textContent = achievedScore > 0 ? dict.wrongWithScore(achievedScore) : dict.wrong;
+        updateLabels();
+
+        // Sprawdzenie, czy wynik kwalifikuje się do Top 10
+        if (achievedScore > 0) {
+          const latestList = await fetchLeaderboard();
+          if (qualifiesForTop10(achievedScore, latestList)) {
+            state.pendingScore = {
+              score: achievedScore,
+              mode: currentMode
+            };
+            openRankingModal(true);
+          }
+        }
       }
-      updateLabels();
     }
 
     function applyManualTime(hideAfter) {
@@ -442,6 +808,10 @@
       state.m = isNaN(mVal) ? 0 : Math.min(59, Math.max(0, mVal));
       document.getElementById('input-hour').value = state.h;
       document.getElementById('input-minute').value = state.m;
+
+      // Ręczne ustawienie czasu resetuje serię punktową
+      state.score = 0;
+      updateLabels();
 
       if (hideAfter && state.panelVisible) {
         togglePanel();
@@ -474,11 +844,23 @@
       state.lang = state.lang === 'pl' ? 'en' : 'pl';
       updateLabels();
       generateQuestion();
+      if (!document.getElementById('ranking-modal').classList.contains('hidden')) {
+        renderRankingList();
+      }
     }
 
     function updateLabels() {
       const dict = i18n[state.lang];
-      document.getElementById('score-badge').textContent = `${dict.score}: ${state.score} / ${state.total}`;
+      document.getElementById('score-badge').textContent = `${dict.score}: ${state.score}`;
+      document.getElementById('ranking-btn').textContent = dict.rankingBtn;
+      document.getElementById('ranking-modal-title').textContent = dict.rankingTitle;
+      document.getElementById('player-name-input').placeholder = dict.namePlaceholder;
+      document.getElementById('save-score-btn').textContent = state.isSavingScore ? dict.savingBtn : dict.saveBtn;
+      document.getElementById('ranking-close-btn').textContent = dict.closeBtn;
+      if (state.pendingScore) {
+        document.getElementById('new-score-msg').textContent = dict.newRecordMsg(state.pendingScore.score);
+      }
+
       document.getElementById('lang-btn').textContent = `🌐 ${state.lang.toUpperCase()}`;
       const toggleBtn = document.getElementById('toggle-panel-btn');
       toggleBtn.textContent = state.panelVisible ? dict.hidePanel : dict.showPanel;
@@ -500,16 +882,30 @@
       updateDayPeriodUI();
     }
 
-    // Obsługa klawisza Enter w polach input
-    document.querySelectorAll('input').forEach(inp => {
-      inp.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') applyManualTime(false);
-      });
+    // Obsługa klawisza Enter w polach godziny/minut
+    ['input-hour', 'input-minute'].forEach(id => {
+      const inp = document.getElementById(id);
+      if (inp) {
+        inp.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') applyManualTime(false);
+        });
+      }
+    });
+
+    // Obsługa klawiszy Enter i Escape w modalu rankingu
+    document.getElementById('player-name-input').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') submitTop10Score();
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && !document.getElementById('ranking-modal').classList.contains('hidden')) {
+        closeRankingModal();
+      }
     });
 
     initClockFace();
     updateLabels();
-    generateQuestion();
+    randomTime();
+    fetchLeaderboard();
   </script>
 </body>
 </html>
