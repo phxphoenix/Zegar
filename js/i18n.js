@@ -28,6 +28,24 @@ export const i18n = {
     wrong: '❌ Błąd! Seria wyzerowana – spróbuj znaleźć poprawną odpowiedź.',
     wrongWithScore: (pts) => `❌ Błąd! Koniec serii (twój wynik: ${pts} pkt). Spróbuj jeszcze raz!`,
 
+    // Zakończenie quizu i pora spać
+    headerFinishBtn: (pts) => pts > 0 ? `🌙 Koniec (${pts})` : '🌙 Koniec',
+    finishQuizBtnZero: 'Koniec na dziś',
+    finishQuizBtnActive: (pts) => `Zakończ i zapisz (${pts} pkt)`,
+    finishQuizTip: 'Zmęczony? Możesz zapisać wynik i odpocząć!',
+    finishQuizHintZero: '🌙 Brak punktów w bieżącej serii – rozwiąż chociaż jedno zadanie, aby zapisać wynik!',
+    finishGoodnightTitle: '🌙 Pora spać! Dobra robota!',
+    finishGoodnightSub: (pts, min, diff) =>
+      `Zdobyłeś <strong>${pts} pkt</strong>. Do wejścia do Top 10 w tej sekcji potrzeba minimum <strong>${min} pkt</strong> (brakuje jeszcze <strong>${diff} pkt</strong>).`,
+    finishYourScoreLbl: 'Twój wynik',
+    finishTop10ThresholdLbl: 'Próg Top 10',
+    finishContinueBtn: '💪 Gram dalej (chcę do Top 10!)',
+    finishSleepBtn: '🌙 Idę spać (zakończ serię)',
+    finishViewRankingBtn: '🏆 Zobacz pełny ranking Top 10',
+    finishSavedFeedback: '🎉 Wynik zapisany w Top 10! Słodkich snów i do jutra! 🌙😴',
+    finishSleepFeedback: '🌙 Dobrej nocy i kolorowych snów! Odpocznij przed kolejnymi wyzwaniami! ⭐',
+    finishRecordBedtimeMsg: (pts) => `🌙 Świetny wynik na dobranoc! ${pts} pkt daje miejsce w Top 10! Wpisz swoje imię:`,
+
     // Nazwy modułów w górnym pasku
     modules: {
       clock: {
@@ -191,6 +209,24 @@ export const i18n = {
     correct: '✅ Great job! Next question coming up...',
     wrong: '❌ Wrong! Streak reset – try to find the right answer.',
     wrongWithScore: (pts) => `❌ Wrong! Streak ended (your score: ${pts} pts). Try again!`,
+
+    // Finish quiz and bedtime
+    headerFinishBtn: (pts) => pts > 0 ? `🌙 Done (${pts})` : '🌙 Done',
+    finishQuizBtnZero: 'Done for today',
+    finishQuizBtnActive: (pts) => `Finish & save (${pts} pts)`,
+    finishQuizTip: 'Tired? You can save your score and call it a day!',
+    finishQuizHintZero: '🌙 No points in this streak yet – solve at least one question to save your score!',
+    finishGoodnightTitle: '🌙 Bedtime! Great job!',
+    finishGoodnightSub: (pts, min, diff) =>
+      `You scored <strong>${pts} pts</strong>. Top 10 in this section requires <strong>${min} pts</strong> (just <strong>${diff} pts</strong> more needed).`,
+    finishYourScoreLbl: 'Your score',
+    finishTop10ThresholdLbl: 'Top 10 threshold',
+    finishContinueBtn: '💪 Keep playing (aim for Top 10!)',
+    finishSleepBtn: '🌙 Go to sleep (end streak)',
+    finishViewRankingBtn: '🏆 View full Top 10 leaderboard',
+    finishSavedFeedback: '🎉 Score saved in Top 10! Sweet dreams and see you tomorrow! 🌙😴',
+    finishSleepFeedback: '🌙 Good night and sweet dreams! Rest up for tomorrow\'s challenges! ⭐',
+    finishRecordBedtimeMsg: (pts) => `🌙 Great bedtime score! ${pts} pts makes the Top 10! Enter your name:`,
 
     modules: {
       clock: {

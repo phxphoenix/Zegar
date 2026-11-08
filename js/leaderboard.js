@@ -437,7 +437,11 @@ export async function openRankingModal(lang = 'pl', withNewScoreForm = false, mo
 
   if (withNewScoreForm && leaderboardState.pendingScore) {
     formSection.classList.remove('hidden');
-    newScoreMsg.textContent = dict.newRecordMsg(leaderboardState.pendingScore.score);
+    if (leaderboardState.pendingScore.isBedtimeFinish && dict.finishRecordBedtimeMsg) {
+      newScoreMsg.textContent = dict.finishRecordBedtimeMsg(leaderboardState.pendingScore.score);
+    } else {
+      newScoreMsg.textContent = dict.newRecordMsg(leaderboardState.pendingScore.score);
+    }
     try {
       nameInput.value = localStorage.getItem(LOCAL_STORAGE_NAME_KEY) || '';
     } catch (e) {

@@ -9,6 +9,7 @@ import {
   leaderboardState,
   fetchLeaderboard,
   qualifiesForTop10,
+  sortLeaderboard,
   openRankingModal,
   closeRankingModal,
   submitTop10Score,
@@ -73,6 +74,29 @@ function updateShellLabels() {
   document.getElementById('player-name-input').placeholder = dict.namePlaceholder;
   document.getElementById('save-score-btn').textContent = leaderboardState.isSavingScore ? dict.savingBtn : dict.saveBtn;
   document.getElementById('ranking-close-btn').textContent = dict.closeBtn;
+
+  // Przycisk zakończenia quizu / pora spać
+  const finishBtn = document.getElementById('finish-quiz-btn');
+  const headerFinishBtn = document.getElementById('header-finish-btn');
+  const tipEl = document.getElementById('finish-quiz-tip');
+
+  if (tipEl) {
+    tipEl.textContent = dict.finishQuizTip;
+  }
+
+  if (finishBtn) {
+    if (appState.score > 0) {
+      finishBtn.className = 'w-full sm:w-auto ml-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-2xl font-bold text-sm bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 hover:from-indigo-700 hover:to-purple-800 text-white shadow-md hover:shadow-lg transition transform hover:-translate-y-0.5 active:translate-y-0 cursor-pointer';
+      finishBtn.innerHTML = `<span>🌙</span><span>${dict.finishQuizBtnActive(appState.score)}</span>`;
+    } else {
+      finishBtn.className = 'w-full sm:w-auto ml-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-2xl font-semibold text-sm bg-slate-100 hover:bg-slate-200 text-slate-600 border border-slate-200 transition cursor-pointer';
+      finishBtn.innerHTML = `<span>🌙</span><span>${dict.finishQuizBtnZero}</span>`;
+    }
+  }
+
+  if (headerFinishBtn) {
+    headerFinishBtn.textContent = dict.headerFinishBtn(appState.score);
+  }
 
   if (leaderboardState.pendingScore) {
     document.getElementById('new-score-msg').textContent = dict.newRecordMsg(leaderboardState.pendingScore.score);
@@ -233,6 +257,113 @@ function toggleLang() {
   }
 }
 
+function openGoodnightModal({ score, minScore, diff }) {
+  const modal = document.getElementById('goodnight-modal');
+  if (!modal) return;
+  const dict = i18n[appState.lang];
+
+  document.getElementById('goodnight-title').textContent = dict.finishGoodnightTitle;
+  document.getElementById('goodnight-subtitle').innerHTML = dict.finishGoodnightSub(score, minScore, diff);
+
+  document.getElementById('goodnight-score-lbl').textContent = dict.finishYourScoreLbl;
+  document.getElementById('goodnight-score-val').textContent = `${score} ${dict.ptsUnit}`;
+
+  document.getElementById('goodnight-top10-lbl').textContent = dict.finishTop10ThresholdLbl;
+  document.getElementById('goodnight-top10-val').textContent = `${minScore} ${dict.ptsUnit}`;
+
+  document.getElementById('goodnight-continue-btn').textContent = dict.finishContinueBtn;
+  document.getElementById('goodnight-sleep-btn').textContent = dict.finishSleepBtn;
+  document.getElementById('goodnight-view-ranking-btn').textContent = dict.finishViewRankingBtn;
+
+  modal.classList.remove('hidden');
+  modal.classList.add('flex');
+}
+
+function closeGoodnightModal() {
+  const modal = document.getElementById('goodnight-modal');
+  if (modal) {
+    modal.classList.remove('flex');
+    modal.classList.add('hidden');
+  }
+}
+
+async function finishCurrentQuiz() {
+  clearAutoNext();
+  const dict = i18n[appState.lang];
+  const feedback = document.getElementById('feedback-box');
+  const activeMod = getActiveModule();
+
+  // Przypadek 1: Brak punktów w bieżącej serii
+  if (!appState.score || appState.score <= 0) {
+    if (feedback) {
+      feedback.className = 'mt-4 min-h-[2.5rem] flex items-center justify-center lg:justify-start font-bold text-sm text-indigo-600';
+      feedback.textContent = dict.finishQuizHintZero;
+    }
+    return;
+  }
+
+  const finishBtn = document.getElementById('finish-quiz-btn');
+  const headerFinishBtn = document.getElementById('header-finish-btn');
+  const prevBtnHtml = finishBtn ? finishBtn.innerHTML : '';
+
+  if (finishBtn) {
+    finishBtn.disabled = true;
+    finishBtn.innerHTML = `<span>⏳</span><span>${dict.loadingRanking || '...'}</span>`;
+  }
+  if (headerFinishBtn) headerFinishBtn.disabled = true;
+
+  const currentScore = appState.score;
+  const rankingPayload = activeMod.getRankingPayload();
+
+  try {
+    const latestList = await fetchLeaderboard(appState.lang, appState.activeModuleId);
+    const qualifies = qualifiesForTop10(currentScore, latestList);
+
+    if (qualifies) {
+      // Zakwalifikowano do Top 10!
+      leaderboardState.pendingScore = {
+        score: currentScore,
+        ...rankingPayload,
+        moduleId: appState.activeModuleId,
+        isBedtimeFinish: true
+      };
+
+      appState.score = 0;
+      appState.answered = true;
+      updateShellLabels();
+
+      if (feedback) {
+        feedback.className = 'mt-4 min-h-[2.5rem] flex items-center justify-center lg:justify-start font-bold text-sm text-emerald-600';
+        feedback.textContent = dict.finishSavedFeedback;
+      }
+
+      const nextPayload = activeMod.generateQuestion(appState.lang, true);
+      applyQuestionPayload(nextPayload);
+
+      openRankingModal(appState.lang, true, appState.activeModuleId);
+    } else {
+      // Wynik dodatni, ale nie mieści się jeszcze w Top 10
+      const sorted = sortLeaderboard(latestList);
+      const minScore = sorted.length >= 10 ? sorted[sorted.length - 1].score : 1;
+      const diff = Math.max(1, minScore - currentScore);
+
+      openGoodnightModal({
+        score: currentScore,
+        minScore,
+        diff
+      });
+    }
+  } catch (err) {
+    console.error('Błąd podczas sprawdzania kwalifikacji do rankingu:', err);
+  } finally {
+    if (finishBtn) {
+      finishBtn.disabled = false;
+      updateShellLabels();
+    }
+    if (headerFinishBtn) headerFinishBtn.disabled = false;
+  }
+}
+
 // Inicjalizacja aplikacji i podpięcie zdarzeń globalnych
 function initApp() {
   document.getElementById('ranking-btn').addEventListener('click', () => {
@@ -242,6 +373,45 @@ function initApp() {
   document.getElementById('lang-btn').addEventListener('click', toggleLang);
   document.getElementById('toggle-panel-btn').addEventListener('click', togglePanel);
 
+  // Akcje zakończenia quizu / pora spać
+  document.getElementById('finish-quiz-btn')?.addEventListener('click', finishCurrentQuiz);
+  document.getElementById('header-finish-btn')?.addEventListener('click', finishCurrentQuiz);
+
+  // Obsługa modala dobrej nocy
+  document.getElementById('goodnight-close-x')?.addEventListener('click', closeGoodnightModal);
+  document.getElementById('goodnight-modal')?.addEventListener('click', (e) => {
+    if (e.target.id === 'goodnight-modal') {
+      closeGoodnightModal();
+    }
+  });
+
+  document.getElementById('goodnight-continue-btn')?.addEventListener('click', closeGoodnightModal);
+
+  document.getElementById('goodnight-sleep-btn')?.addEventListener('click', () => {
+    closeGoodnightModal();
+    appState.score = 0;
+    appState.answered = false;
+    clearAutoNext();
+    updateShellLabels();
+
+    const activeMod = getActiveModule();
+    const nextPayload = activeMod.generateQuestion(appState.lang, true);
+    applyQuestionPayload(nextPayload);
+
+    const feedback = document.getElementById('feedback-box');
+    const dict = i18n[appState.lang];
+    if (feedback) {
+      feedback.className = 'mt-4 min-h-[2.5rem] flex items-center justify-center lg:justify-start font-bold text-sm text-indigo-600';
+      feedback.textContent = dict.finishSleepFeedback;
+    }
+  });
+
+  document.getElementById('goodnight-view-ranking-btn')?.addEventListener('click', () => {
+    closeGoodnightModal();
+    openRankingModal(appState.lang, false, appState.activeModuleId);
+  });
+
+  // Obsługa modala rankingu
   document.getElementById('ranking-close-x').addEventListener('click', closeRankingModal);
   document.getElementById('ranking-close-btn').addEventListener('click', closeRankingModal);
   document.getElementById('save-score-btn').addEventListener('click', () => {
@@ -259,8 +429,12 @@ function initApp() {
   });
 
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && !document.getElementById('ranking-modal').classList.contains('hidden')) {
-      closeRankingModal();
+    if (e.key === 'Escape') {
+      if (!document.getElementById('goodnight-modal').classList.contains('hidden')) {
+        closeGoodnightModal();
+      } else if (!document.getElementById('ranking-modal').classList.contains('hidden')) {
+        closeRankingModal();
+      }
     }
   });
 
