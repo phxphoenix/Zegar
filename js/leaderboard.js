@@ -1,12 +1,14 @@
 // ============================================================================
-// WSPÓLNY MODUŁ RANKINGU TOP 10 (FIREBASE REST API + LOCALSTORAGE FALLBACK)
-// Obsługuje wszystkie moduły przedmiotowe oraz zachowuje kompatybilność wsteczną
+// MODUŁ RANKINGU TOP 10 PER SEKCJA (FIREBASE REST API + LOCALSTORAGE FALLBACK)
+// Każdy moduł przedmiotowy (Zegar, Matematyka, Ortografia, ...) posiada własną
+// niezależną listę Top 10. Zawiera automatyczną migrację ze wspólnej tablicy v1.
 // ============================================================================
 
 import { i18n } from './i18n.js';
 
 const FIREBASE_DB_URL = 'https://zegar-eda05-default-rtdb.europe-west1.firebasedatabase.app';
-const LOCAL_STORAGE_CACHE_KEY = 'zegar_leaderboard_top10_v1';
+const LEGACY_LOCAL_STORAGE_KEY = 'zegar_leaderboard_top10_v1';
+const LOCAL_STORAGE_BY_MODULE_KEY = 'zegar_leaderboards_by_module_v2';
 const LOCAL_STORAGE_NAME_KEY = 'zegar_last_player_name_v1';
 
 const OP_ICONS = {
@@ -16,36 +18,62 @@ const OP_ICONS = {
   div: '➗'
 };
 
+const ORTHO_CAT_SHORT = {
+  u_o: 'Ó/U',
+  rz_z: 'RZ/Ż',
+  ch_h: 'CH/H'
+};
+
 export const leaderboardState = {
-  list: [],
+  activeModuleId: 'clock',
+  byModule: {}, // { clock: [...], math: [...], orthography: [...] }
+  list: [],     // Aktualnie wyświetlana lista Top 10 dla aktywnego modułu
   pendingScore: null, // { score: number, moduleId: string, mode: string, meta: object }
   lastSavedId: null,
   isSavingScore: false
 };
 
-function getFirebaseEndpoint() {
+function getFirebaseBaseUrl() {
   const trimmed = (FIREBASE_DB_URL || '').trim().replace(/\/+$/, '');
-  if (!trimmed) return null;
-  return `${trimmed}/leaderboard.json`;
+  return trimmed || null;
 }
 
-function loadLocalCache() {
-  try {
-    const raw = localStorage.getItem(LOCAL_STORAGE_CACHE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? sortLeaderboard(parsed) : [];
-  } catch (e) {
-    return [];
-  }
+function getFirebaseRootEndpoint() {
+  const base = getFirebaseBaseUrl();
+  return base ? `${base}/leaderboard.json` : null;
 }
 
-function saveLocalCache(list) {
-  try {
-    localStorage.setItem(LOCAL_STORAGE_CACHE_KEY, JSON.stringify(list));
-  } catch (e) {
-    // Ignoruj błędy przepełnienia/prywatności localStorage
+function getFirebaseModuleEndpoint(moduleId) {
+  const base = getFirebaseBaseUrl();
+  return base ? `${base}/leaderboard/${encodeURIComponent(moduleId)}.json` : null;
+}
+
+export function resolveEntryModuleId(entry) {
+  if (!entry || typeof entry !== 'object') return 'clock';
+  if (entry.moduleId) return entry.moduleId;
+  if (entry.mode === 'math') return 'math';
+  if (entry.mode === 'gap' || entry.mode === 'word' || entry.mode === 'spot' || entry.mode === 'orthography') {
+    return 'orthography';
   }
+  return 'clock';
+}
+
+function normalizeEntry(entry, forcedModuleId = null) {
+  if (!entry || typeof entry !== 'object') return null;
+  const moduleId = forcedModuleId || resolveEntryModuleId(entry);
+  const mode = entry.mode || (moduleId === 'math' ? 'math' : moduleId === 'orthography' ? 'gap' : 'digital');
+  const meta = entry.meta && typeof entry.meta === 'object' ? { ...entry.meta } : {};
+
+  if (moduleId === 'clock' && !meta.mode) {
+    meta.mode = mode === 'words' ? 'words' : 'digital';
+  }
+
+  return {
+    ...entry,
+    moduleId,
+    mode,
+    meta
+  };
 }
 
 export function sortLeaderboard(list) {
@@ -60,6 +88,109 @@ export function sortLeaderboard(list) {
     .slice(0, 10);
 }
 
+function isLegacyFlatPayload(data) {
+  if (!data) return false;
+  if (Array.isArray(data)) {
+    return data.some(item => item && typeof item === 'object' && typeof item.score === 'number');
+  }
+  if (typeof data === 'object') {
+    const values = Object.values(data);
+    return values.length > 0 && values.some(item => item && typeof item === 'object' && typeof item.score === 'number');
+  }
+  return false;
+}
+
+function splitFlatListByModule(flatList) {
+  const grouped = {};
+  const seenIds = new Set();
+
+  (flatList || []).forEach(rawItem => {
+    if (!rawItem || typeof rawItem.score !== 'number' || rawItem.score <= 0) return;
+    const dedupKey = rawItem.id || `${rawItem.name}_${rawItem.score}_${rawItem.date}`;
+    if (seenIds.has(dedupKey)) return;
+    seenIds.add(dedupKey);
+
+    const normalized = normalizeEntry(rawItem);
+    const modId = normalized.moduleId;
+    if (!grouped[modId]) grouped[modId] = [];
+    grouped[modId].push(normalized);
+  });
+
+  Object.keys(grouped).forEach(modId => {
+    grouped[modId] = sortLeaderboard(grouped[modId]);
+  });
+
+  return grouped;
+}
+
+function normalizePerModuleMap(rawMap) {
+  const result = {};
+  if (!rawMap || typeof rawMap !== 'object') return result;
+
+  Object.entries(rawMap).forEach(([modId, rawModList]) => {
+    const arr = Array.isArray(rawModList)
+      ? rawModList
+      : rawModList && typeof rawModList === 'object'
+      ? Object.values(rawModList)
+      : [];
+    const normalizedArr = arr
+      .map(item => normalizeEntry(item, modId))
+      .filter(Boolean);
+    result[modId] = sortLeaderboard(normalizedArr);
+  });
+
+  return result;
+}
+
+function loadLegacyLocalFlatList() {
+  try {
+    const raw = localStorage.getItem(LEGACY_LOCAL_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function loadLocalCacheAll() {
+  try {
+    const rawV2 = localStorage.getItem(LOCAL_STORAGE_BY_MODULE_KEY);
+    if (rawV2) {
+      const parsedV2 = JSON.parse(rawV2);
+      if (parsedV2 && typeof parsedV2 === 'object' && !Array.isArray(parsedV2)) {
+        return normalizePerModuleMap(parsedV2);
+      }
+    }
+
+    // Automatyczna migracja lokalnego cache v1 -> v2 (podział na moduły)
+    const legacyFlat = loadLegacyLocalFlatList();
+    if (legacyFlat.length > 0) {
+      const migrated = splitFlatListByModule(legacyFlat);
+      saveLocalCacheAll(migrated);
+      return migrated;
+    }
+  } catch (e) {
+    // Ignoruj błędy dostępu do localStorage
+  }
+  return {};
+}
+
+function saveLocalCacheAll(byModuleMap) {
+  try {
+    localStorage.setItem(LOCAL_STORAGE_BY_MODULE_KEY, JSON.stringify(byModuleMap));
+  } catch (e) {
+    // Ignoruj błędy przepełnienia/prywatności localStorage
+  }
+}
+
+function syncActiveModuleList(moduleId) {
+  const modId = moduleId || leaderboardState.activeModuleId || 'clock';
+  leaderboardState.activeModuleId = modId;
+  leaderboardState.list = leaderboardState.byModule[modId] || [];
+  return leaderboardState.list;
+}
+
 export function qualifiesForTop10(score, list) {
   if (!score || score <= 0) return false;
   const sorted = sortLeaderboard(list);
@@ -67,55 +198,84 @@ export function qualifiesForTop10(score, list) {
   return score >= sorted[sorted.length - 1].score;
 }
 
-export async function fetchLeaderboard(lang = 'pl') {
-  const endpoint = getFirebaseEndpoint();
+export async function fetchLeaderboard(lang = 'pl', moduleId = null) {
+  const targetModuleId = moduleId || leaderboardState.activeModuleId || 'clock';
+  leaderboardState.activeModuleId = targetModuleId;
+
+  const rootEndpoint = getFirebaseRootEndpoint();
   const dict = i18n[lang];
   const statusEl = document.getElementById('ranking-sync-status');
 
-  if (!endpoint) {
-    leaderboardState.list = loadLocalCache();
+  if (!rootEndpoint) {
+    leaderboardState.byModule = loadLocalCacheAll();
     if (statusEl) statusEl.textContent = dict.syncLocalFallback;
-    return leaderboardState.list;
+    return syncActiveModuleList(targetModuleId);
   }
 
   try {
-    const res = await fetch(endpoint, { cache: 'no-store' });
+    const res = await fetch(rootEndpoint, { cache: 'no-store' });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
-    const rawList = Array.isArray(data) ? data : Object.values(data || {});
-    const sorted = sortLeaderboard(rawList);
-    leaderboardState.list = sorted;
-    saveLocalCache(sorted);
+
+    let byModule = {};
+
+    if (!data) {
+      byModule = loadLocalCacheAll();
+    } else if (isLegacyFlatPayload(data)) {
+      // Automatyczna migracja płaskiej tablicy z chmury (+ ewentualnego cache v1) na podział wg sekcji
+      const cloudFlat = Array.isArray(data) ? data : Object.values(data);
+      const localLegacy = loadLegacyLocalFlatList();
+      byModule = splitFlatListByModule([...cloudFlat, ...localLegacy]);
+
+      // Zapisz zmigrowaną strukturę z powrotem do Firebase, aby każda sekcja miała swój węzeł
+      try {
+        await fetch(rootEndpoint, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(byModule)
+        });
+      } catch (migErr) {
+        console.warn('Could not persist migrated structure to Firebase:', migErr);
+      }
+    } else {
+      byModule = normalizePerModuleMap(data);
+    }
+
+    leaderboardState.byModule = byModule;
+    saveLocalCacheAll(byModule);
     if (statusEl) statusEl.textContent = dict.syncCloudOk;
-    return sorted;
+    return syncActiveModuleList(targetModuleId);
   } catch (err) {
     console.warn('Firebase fetch fallback to local cache:', err);
-    leaderboardState.list = loadLocalCache();
+    leaderboardState.byModule = loadLocalCacheAll();
     if (statusEl) statusEl.textContent = dict.syncCloudError;
-    return leaderboardState.list;
+    return syncActiveModuleList(targetModuleId);
   }
 }
 
 async function saveEntryToLeaderboard(newEntry, lang) {
-  const endpoint = getFirebaseEndpoint();
-  const currentList = await fetchLeaderboard(lang);
-  const updated = sortLeaderboard([newEntry, ...currentList]);
-  leaderboardState.list = updated;
-  saveLocalCache(updated);
+  const moduleId = newEntry.moduleId || leaderboardState.activeModuleId || 'clock';
+  const currentModuleList = await fetchLeaderboard(lang, moduleId);
+  const updatedModuleList = sortLeaderboard([normalizeEntry(newEntry, moduleId), ...currentModuleList]);
 
-  if (endpoint) {
+  leaderboardState.byModule[moduleId] = updatedModuleList;
+  syncActiveModuleList(moduleId);
+  saveLocalCacheAll(leaderboardState.byModule);
+
+  const moduleEndpoint = getFirebaseModuleEndpoint(moduleId);
+  if (moduleEndpoint) {
     try {
-      const res = await fetch(endpoint, {
+      const res = await fetch(moduleEndpoint, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updated)
+        body: JSON.stringify(updatedModuleList)
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
     } catch (err) {
-      console.error('Failed to save leaderboard to Firebase:', err);
+      console.error(`Failed to save ${moduleId} leaderboard to Firebase:`, err);
     }
   }
-  return updated;
+  return updatedModuleList;
 }
 
 function formatShortDate(isoStr) {
@@ -127,7 +287,7 @@ function formatShortDate(isoStr) {
 }
 
 function formatEntryBadge(entry, dict) {
-  const moduleId = entry.moduleId || (entry.mode === 'math' ? 'math' : 'clock');
+  const moduleId = resolveEntryModuleId(entry);
 
   if (moduleId === 'math') {
     const grade = entry.meta?.grade || 1;
@@ -141,6 +301,18 @@ function formatEntryBadge(entry, dict) {
     };
   }
 
+  if (moduleId === 'orthography') {
+    const grade = entry.meta?.grade || 1;
+    const cats = Array.isArray(entry.meta?.categories) && entry.meta.categories.length > 0
+      ? entry.meta.categories
+      : ['u_o', 'rz_z', 'ch_h'];
+    const catLabels = cats.map(c => ORTHO_CAT_SHORT[c] || c).join(', ');
+    return {
+      text: `${dict.badges.orthoPrefix} • ${dict.badges.gradeShort(grade)} (${catLabels})`,
+      className: 'bg-amber-100 text-amber-900 px-2 py-0.5 rounded-md font-semibold'
+    };
+  }
+
   if (entry.meta?.customBadge) {
     return {
       text: entry.meta.customBadge,
@@ -148,7 +320,7 @@ function formatEntryBadge(entry, dict) {
     };
   }
 
-  // Domyślnie: Zegar (w tym wpisy historyczne bez pola moduleId)
+  // Domyślnie: Zegar
   const clockMode = entry.meta?.mode || entry.mode;
   return {
     text: clockMode === 'words' ? dict.badges.clockWords : dict.badges.clockDigital,
@@ -156,10 +328,26 @@ function formatEntryBadge(entry, dict) {
   };
 }
 
-export function renderRankingList(lang = 'pl') {
+export function updateRankingModalHeader(lang = 'pl', moduleId = null) {
+  const dict = i18n[lang];
+  const modId = moduleId || leaderboardState.activeModuleId || 'clock';
+  const modLabel = dict.modules[modId]?.navLabel || modId;
+  const titleEl = document.getElementById('ranking-modal-title');
+  if (titleEl) {
+    titleEl.textContent = dict.rankingTitleForModule
+      ? dict.rankingTitleForModule(modLabel)
+      : `${dict.rankingTitle} – ${modLabel}`;
+  }
+}
+
+export function renderRankingList(lang = 'pl', moduleId = null) {
   const container = document.getElementById('ranking-list-container');
   if (!container) return;
   const dict = i18n[lang];
+  const targetModuleId = moduleId || leaderboardState.activeModuleId || 'clock';
+  syncActiveModuleList(targetModuleId);
+  updateRankingModalHeader(lang, targetModuleId);
+
   container.innerHTML = '';
 
   if (!leaderboardState.list || leaderboardState.list.length === 0) {
@@ -227,13 +415,22 @@ export function renderRankingList(lang = 'pl') {
   });
 }
 
-export async function openRankingModal(lang = 'pl', withNewScoreForm = false) {
+export async function openRankingModal(lang = 'pl', withNewScoreForm = false, moduleId = null) {
+  const targetModuleId =
+    moduleId ||
+    leaderboardState.pendingScore?.moduleId ||
+    leaderboardState.activeModuleId ||
+    'clock';
+  leaderboardState.activeModuleId = targetModuleId;
+
   const modal = document.getElementById('ranking-modal');
   const formSection = document.getElementById('new-score-section');
   const nameInput = document.getElementById('player-name-input');
   const newScoreMsg = document.getElementById('new-score-msg');
   const container = document.getElementById('ranking-list-container');
   const dict = i18n[lang];
+
+  updateRankingModalHeader(lang, targetModuleId);
 
   modal.classList.remove('hidden');
   modal.classList.add('flex');
@@ -252,8 +449,8 @@ export async function openRankingModal(lang = 'pl', withNewScoreForm = false) {
   }
 
   container.innerHTML = `<div class="text-center py-10 text-slate-400 font-medium text-sm">${dict.loadingRanking}</div>`;
-  await fetchLeaderboard(lang);
-  renderRankingList(lang);
+  await fetchLeaderboard(lang, targetModuleId);
+  renderRankingList(lang, targetModuleId);
 }
 
 export function closeRankingModal() {
@@ -281,12 +478,13 @@ export async function submitTop10Score(lang = 'pl') {
 
   const entryId = `${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
   const pending = leaderboardState.pendingScore;
+  const targetModuleId = pending.moduleId || leaderboardState.activeModuleId || 'clock';
 
   const newEntry = {
     id: entryId,
     name: playerName,
     score: pending.score,
-    moduleId: pending.moduleId || 'clock',
+    moduleId: targetModuleId,
     mode: pending.mode || 'digital',
     meta: pending.meta || {},
     date: new Date().toISOString()
@@ -301,5 +499,5 @@ export async function submitTop10Score(lang = 'pl') {
   saveBtn.textContent = dict.saveBtn;
 
   document.getElementById('new-score-section').classList.add('hidden');
-  renderRankingList(lang);
+  renderRankingList(lang, targetModuleId);
 }

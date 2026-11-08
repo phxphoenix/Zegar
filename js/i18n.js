@@ -5,16 +5,17 @@
 
 export const i18n = {
   pl: {
-    appTitle: ' Akademia Bystrzaka – Nauka przez zabawę',
+    appTitle: 'Akademia Bystrzaka – Nauka przez zabawę',
     score: '🔥 Wynik',
     rankingBtn: '🏆 Ranking',
     rankingTitle: '🏆 Ranking Top 10',
-    newRecordMsg: (pts) => `🎉 Brawo! Wynik ${pts} pkt daje miejsce w Top 10! Wpisz imię:`,
+    rankingTitleForModule: (modLabel) => `🏆 Top 10 – ${modLabel}`,
+    newRecordMsg: (pts) => `🎉 Brawo! Wynik ${pts} pkt daje miejsce w Top 10 tej sekcji! Wpisz imię:`,
     namePlaceholder: 'Wpisz swoje imię...',
     saveBtn: 'Zapisz',
     savingBtn: 'Zapisywanie...',
     closeBtn: 'Zamknij',
-    emptyRanking: 'Brak zapisanych wyników. Rozwiąż zadania i bądź pierwszy!',
+    emptyRanking: 'Brak zapisanych wyników w tej sekcji. Rozwiąż zadania i bądź pierwszy!',
     loadingRanking: '⏳ Pobieranie rankingu...',
     ptsUnit: 'pkt',
     syncCloudOk: '☁️ Wspólny ranking online (Firebase)',
@@ -36,6 +37,15 @@ export const i18n = {
       math: {
         navLabel: '🧮 Matematyka',
         questionTitle: 'Ile to jest? Wybierz poprawny wynik:'
+      },
+      orthography: {
+        navLabel: '✍️ Ortografia',
+        questionTitle: 'Jak poprawnie zapisać ten wyraz?',
+        questionTitleByMode: {
+          gap: 'Jaką literę lub dwuznak należy wstawić w lukę?',
+          word: 'Który wyraz jest napisany poprawnie?',
+          spot: 'Bystre oko: wskaż jedyny wyraz napisany BEZ błędu!'
+        }
       }
     },
 
@@ -44,6 +54,7 @@ export const i18n = {
       clockDigital: '🕒 Zegar • Cyfrowy',
       clockWords: '🕒 Zegar • Słownie',
       mathPrefix: '🧮 Matematyka',
+      orthoPrefix: '✍️ Ortografia',
       gradeShort: (g) => `Kl. ${g}`
     },
 
@@ -112,6 +123,48 @@ export const i18n = {
         divGroups: (a, b) =>
           `Rozdzielamy <strong>${a}</strong> po równo na <strong>${b}</strong> pudełka. Pomyśl: <strong>? × ${b} = ${a}</strong>.`
       }
+    },
+
+    // Moduł: Ortografia
+    orthography: {
+      panelTitle: 'Konfiguracja ortografii',
+      randomBtn: '🎲 Nowe słówko',
+      lblGrade: 'Poziom trudności (Szkoła Podstawowa)',
+      grades: {
+        1: { name: '🎒 Klasa 1', desc: 'Podstawowe słówka z elementarza, proste oboczności (ó→o, rz→r, ch→sz) i wyrazy z ó/u, rz/ż, ch/h' },
+        2: { name: '📘 Klasa 2', desc: 'Szerszy słownik, przyrostki -ówka, -unek, rz po spółgłoskach, oboczności ó→e, ż→g/dz' },
+        3: { name: '🎓 Klasa 3', desc: 'Trudniejsze wyrazy słownikowe, oboczności ó→a, ż→h/s, wyjątki (pszczoła, kształt, skuwka, druh)' }
+      },
+      lblCategories: 'Ćwiczone trudności (wybierz min. 1)',
+      categories: {
+        u_o: { label: '🅰️ Ó oraz U', short: 'Ó / U' },
+        rz_z: { label: '🅱️ RZ oraz Ż', short: 'RZ / Ż' },
+        ch_h: { label: '🅲 CH oraz H', short: 'CH / H' }
+      },
+      lblRuleFilter: 'Rodzaj wyrazów (filtr reguł)',
+      ruleFilters: {
+        all: { label: '🌟 Wszystkie', desc: 'Mieszane: wyrazy z obocznościami, zasadami i do zapamiętania' },
+        explainable: { label: '🔄 Oboczności i zasady', desc: 'Tylko wyrazy wymienne (np. ó→o, rz→r, ż→g) i oparte na regule' },
+        memory: { label: '🧠 Do zapamiętania', desc: 'Tylko wyrazy niewymienne (słownikowe) oraz wyjątki' }
+      },
+      lblQuizMode: 'Tryb wyzwania',
+      quizModes: {
+        gap: { label: '🧩 Uzupełnij lukę (litery)', short: 'Luka' },
+        word: { label: '📝 Pełne wyrazy (4 warianty)', short: 'Wyrazy' },
+        spot: { label: '🔍 Bystre oko (znajdź poprawny)', short: 'Bystre oko' }
+      },
+      lblContextToggle: '💬 Pokazuj zdanie przykładowe na scenie',
+      showHintBtn: '💡 Pokaż podpowiedź (oboczność / zasada)',
+      hideHintBtn: '🙈 Ukryj podpowiedź',
+      ruleBadges: {
+        alternation: '🔄 Wyraz wymienny (oboczność)',
+        rule: '📏 Zasada ortograficzna',
+        memory: '🧠 Wyraz do zapamiętania'
+      },
+      spotStageTitle: 'Detektyw Ortografii',
+      spotStageSubtitle: 'Trzy poniższe wyrazy mają błąd ortograficzny, a tylko JEDEN jest napisany poprawnie!',
+      wordStagePrompt: 'Wskaż poprawną pisownię wyrazu pasującego do ilustracji i zdania:',
+      enGlossPrefix: '🇬🇧 Ang.:'
     }
   },
 
@@ -120,12 +173,13 @@ export const i18n = {
     score: '🔥 Score',
     rankingBtn: '🏆 Ranking',
     rankingTitle: '🏆 Top 10 Leaderboard',
-    newRecordMsg: (pts) => `🎉 Awesome! ${pts} pts makes the Top 10! Enter your name:`,
+    rankingTitleForModule: (modLabel) => `🏆 Top 10 – ${modLabel}`,
+    newRecordMsg: (pts) => `🎉 Awesome! ${pts} pts makes the Top 10 in this section! Enter your name:`,
     namePlaceholder: 'Enter your name...',
     saveBtn: 'Save',
     savingBtn: 'Saving...',
     closeBtn: 'Close',
-    emptyRanking: 'No scores yet. Answer questions and be the first!',
+    emptyRanking: 'No scores in this section yet. Answer questions and be the first!',
     loadingRanking: '⏳ Loading leaderboard...',
     ptsUnit: 'pts',
     syncCloudOk: '☁️ Shared online leaderboard (Firebase)',
@@ -146,6 +200,15 @@ export const i18n = {
       math: {
         navLabel: '🧮 Math',
         questionTitle: 'What is the result? Pick the right answer:'
+      },
+      orthography: {
+        navLabel: '✍️ Polish Spelling',
+        questionTitle: 'How do you spell this Polish word correctly?',
+        questionTitleByMode: {
+          gap: 'Which letter or digraph belongs in the gap?',
+          word: 'Which Polish spelling is correct?',
+          spot: 'Sharp Eye: spot the ONLY word spelled WITHOUT an error!'
+        }
       }
     },
 
@@ -153,12 +216,14 @@ export const i18n = {
       clockDigital: '🕒 Clock • Digital',
       clockWords: '🕒 Clock • Words',
       mathPrefix: '🧮 Math',
+      orthoPrefix: '✍️ Spelling',
       gradeShort: (g) => `Gr. ${g}`
     },
 
     clock: {
       hourHand: 'Hour hand (short)',
       minHand: 'Minute hand (long)',
+      minHandShort: 'Min',
       panelTitle: 'Clock settings',
       randomBtn: '🎲 Random time',
       lblHours: 'Hour (0-23)',
@@ -219,6 +284,48 @@ export const i18n = {
         divGroups: (a, b) =>
           `Share <strong>${a}</strong> equally into <strong>${b}</strong> boxes. Think: <strong>? × ${b} = ${a}</strong>.`
       }
+    },
+
+    // Moduł: Ortografia (Polish Orthography with English UI support)
+    orthography: {
+      panelTitle: 'Polish Spelling Configuration',
+      randomBtn: '🎲 New word',
+      lblGrade: 'Difficulty level (Primary School)',
+      grades: {
+        1: { name: '🎒 Grade 1', desc: 'Basic words, simple alternations (ó→o, rz→r, ch→sz) and core ó/u, rz/ż, ch/h vocabulary' },
+        2: { name: '📘 Grade 2', desc: 'Broader vocabulary, suffixes -ówka, -unek, rz after consonants, ó→e and ż→g/dz alternations' },
+        3: { name: '🎓 Grade 3', desc: 'Advanced words, ó→a and ż→h/s alternations, spelling exceptions (pszczoła, kształt, skuwka, druh)' }
+      },
+      lblCategories: 'Practiced spelling pairs (pick at least 1)',
+      categories: {
+        u_o: { label: '🅰️ Ó and U', short: 'Ó / U' },
+        rz_z: { label: '🅱️ RZ and Ż', short: 'RZ / Ż' },
+        ch_h: { label: '🅲 CH and H', short: 'CH / H' }
+      },
+      lblRuleFilter: 'Word rule filter',
+      ruleFilters: {
+        all: { label: '🌟 All words', desc: 'Mixed: alternating words, rule-based words, and words to memorize' },
+        explainable: { label: '🔄 Alternations & rules', desc: 'Only words explained by root alternation (e.g. ó→o, rz→r) or a rule' },
+        memory: { label: '🧠 Memorize & exceptions', desc: 'Only non-alternating dictionary words and exceptions' }
+      },
+      lblQuizMode: 'Challenge mode',
+      quizModes: {
+        gap: { label: '🧩 Fill the gap (letters)', short: 'Gap' },
+        word: { label: '📝 Full words (4 variants)', short: 'Words' },
+        spot: { label: '🔍 Sharp eye (find the right one)', short: 'Sharp eye' }
+      },
+      lblContextToggle: '💬 Show example sentence on stage',
+      showHintBtn: '💡 Show hint (alternation / rule)',
+      hideHintBtn: '🙈 Hide hint',
+      ruleBadges: {
+        alternation: '🔄 Root alternation',
+        rule: '📏 Spelling rule',
+        memory: '🧠 Word to memorize'
+      },
+      spotStageTitle: 'Spelling Detective',
+      spotStageSubtitle: 'Three words below contain a spelling mistake, and only ONE is written correctly!',
+      wordStagePrompt: 'Pick the correct spelling for the word matching the picture and sentence:',
+      enGlossPrefix: '🇬🇧 Meaning:'
     }
   }
 };

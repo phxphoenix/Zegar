@@ -12,7 +12,8 @@ import {
   openRankingModal,
   closeRankingModal,
   submitTop10Score,
-  renderRankingList
+  renderRankingList,
+  updateRankingModalHeader
 } from './leaderboard.js';
 
 const appState = {
@@ -64,10 +65,11 @@ function renderModuleTabs() {
 function updateShellLabels() {
   const dict = i18n[appState.lang];
   const modDict = dict.modules[appState.activeModuleId];
+  const activeMod = getActiveModule();
 
   document.getElementById('score-badge').textContent = `${dict.score}: ${appState.score}`;
   document.getElementById('ranking-btn').textContent = dict.rankingBtn;
-  document.getElementById('ranking-modal-title').textContent = dict.rankingTitle;
+  updateRankingModalHeader(appState.lang, appState.activeModuleId);
   document.getElementById('player-name-input').placeholder = dict.namePlaceholder;
   document.getElementById('save-score-btn').textContent = leaderboardState.isSavingScore ? dict.savingBtn : dict.saveBtn;
   document.getElementById('ranking-close-btn').textContent = dict.closeBtn;
@@ -86,7 +88,9 @@ function updateShellLabels() {
 
   const questionTitle = document.getElementById('question-title');
   if (questionTitle && modDict) {
-    questionTitle.textContent = modDict.questionTitle;
+    const mode = activeMod?.getRankingPayload?.()?.mode;
+    questionTitle.textContent =
+      (mode && modDict.questionTitleByMode?.[mode]) || modDict.questionTitle;
   }
 
   renderModuleTabs();
@@ -162,13 +166,14 @@ async function checkAnswer(selected, btnElement) {
     updateShellLabels();
 
     if (achievedScore > 0) {
-      const latestList = await fetchLeaderboard(appState.lang);
-      if (qualifiesForTop10(achievedScore, latestList)) {
+      const latestSectionList = await fetchLeaderboard(appState.lang, appState.activeModuleId);
+      if (qualifiesForTop10(achievedScore, latestSectionList)) {
         leaderboardState.pendingScore = {
           score: achievedScore,
-          ...rankingPayload
+          ...rankingPayload,
+          moduleId: appState.activeModuleId
         };
-        openRankingModal(appState.lang, true);
+        openRankingModal(appState.lang, true, appState.activeModuleId);
       }
     }
   }
@@ -177,6 +182,7 @@ async function checkAnswer(selected, btnElement) {
 function switchModule(moduleId) {
   clearAutoNext();
   appState.activeModuleId = moduleId;
+  leaderboardState.activeModuleId = moduleId;
   appState.score = 0;
 
   const activeMod = getActiveModule();
@@ -223,14 +229,14 @@ function toggleLang() {
   applyQuestionPayload(updatedPayload);
 
   if (!document.getElementById('ranking-modal').classList.contains('hidden')) {
-    renderRankingList(appState.lang);
+    renderRankingList(appState.lang, appState.activeModuleId);
   }
 }
 
 // Inicjalizacja aplikacji i podpięcie zdarzeń globalnych
 function initApp() {
   document.getElementById('ranking-btn').addEventListener('click', () => {
-    openRankingModal(appState.lang, false);
+    openRankingModal(appState.lang, false, appState.activeModuleId);
   });
 
   document.getElementById('lang-btn').addEventListener('click', toggleLang);
@@ -259,7 +265,7 @@ function initApp() {
   });
 
   switchModule('clock');
-  fetchLeaderboard(appState.lang);
+  fetchLeaderboard(appState.lang, appState.activeModuleId);
 }
 
 initApp();
