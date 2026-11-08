@@ -269,6 +269,8 @@ export const clockModule = {
       document.getElementById('input-hour').value = state.h;
       document.getElementById('input-minute').value = state.m;
 
+      updateClockVisuals(state.lang);
+
       if (callbacks.onManualResetStreak) {
         callbacks.onManualResetStreak(hideAfter);
       }
