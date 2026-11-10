@@ -50,9 +50,11 @@ Otwórz plik `js/modules/orthographyData.js` i dodaj obiekt do tablicy `ORTHOGRA
 
 ---
 
-## 📬 Jak zgłaszać Pull Requesty?
+## 📬 Jak zgłaszać Pull Requesty i cykl wydawniczy?
 
-1. Utwórz nową gałąź (`git checkout -b feature/nowy-modul-geometria`).
+Projekt korzysta ze środowiska przedprodukcyjnego (**stage**):
+1. Utwórz nową gałąź od gałęzi `stage` (`git checkout -b feature/nowy-modul stage`).
 2. Wprowadź zmiany i upewnij się, że testy przechodzą: `npm test`.
 3. Zacommituj zmiany ze zwięzłym opisem (`git commit -m "feat: dodanie modułu geometrii"`).
-4. Wypchnij gałąź do swojego forka i utwórz **Pull Request**.
+4. Wypchnij gałąź do repozytorium i utwórz **Pull Request kierowany do gałęzi `stage`**.
+5. Po weryfikacji na środowisku testowym (staging), wersja kandydująca trafia do gałęzi `main` (PROD).
