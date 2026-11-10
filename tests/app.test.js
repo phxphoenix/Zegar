@@ -13,8 +13,9 @@ describe('app - Integracja powłoki aplikacji (App Shell & Quiz Engine)', () => 
 
   it('inicjalizuje aplikację z domyślnym modułem zegara i wynikiem 0', () => {
     const tabs = document.querySelectorAll('#module-tabs button');
-    assert.strictEqual(tabs.length, 3, 'Górny pasek powinien zawierać 3 zakładki przedmiotów');
+    assert.strictEqual(tabs.length, 4, 'Górny pasek powinien zawierać 4 zakładki przedmiotów');
     assert.strictEqual(tabs[0].textContent.trim(), '🕒 Zegar');
+    assert.strictEqual(tabs[3].textContent.trim(), '🚩 Flaga/Logo');
     assert.ok(tabs[0].classList.contains('bg-indigo-600'), 'Domyślnie aktywny powinien być moduł zegara');
 
     const scoreBadge = document.getElementById('score-badge');
@@ -72,6 +73,16 @@ describe('app - Integracja powłoki aplikacji (App Shell & Quiz Engine)', () => 
       'Tytuł pytania powinien odpowiadać ortografii'
     );
     assert.ok(document.getElementById('ortho-context-badge'), 'Scena ortografii powinna być zamontowana');
+
+    // Przełącz na Flaga/Logo
+    const flTab = tabs[3];
+    flTab.click();
+    const qTitleFl = document.getElementById('question-title');
+    assert.ok(
+      qTitleFl.textContent.includes('flaga') || qTitleFl.textContent.includes('logotyp'),
+      'Tytuł pytania powinien odpowiadać sekcji Flaga/Logo'
+    );
+    assert.ok(document.getElementById('fl-context-badge'), 'Scena Flaga/Logo powinna być zamontowana');
 
     // Powrót do Zegara
     clockTab.click();

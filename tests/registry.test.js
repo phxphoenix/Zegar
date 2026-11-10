@@ -4,13 +4,14 @@ import { MODULES, getModuleById } from '../js/modules/registry.js';
 import { clockModule } from '../js/modules/clock.js';
 import { mathModule } from '../js/modules/math.js';
 import { orthographyModule } from '../js/modules/orthography.js';
+import { flagsLogosModule } from '../js/modules/flagsLogos.js';
 
 describe('registry - Rejestr modułów przedmiotowych', () => {
-  it('zawiera zarejestrowane 3 moduły: Zegar, Matematyka, Ortografia', () => {
+  it('zawiera zarejestrowane 4 moduły: Zegar, Matematyka, Ortografia, Flaga/Logo', () => {
     assert.ok(Array.isArray(MODULES));
-    assert.strictEqual(MODULES.length, 3);
+    assert.strictEqual(MODULES.length, 4);
     const ids = MODULES.map(m => m.id);
-    assert.deepStrictEqual(ids, ['clock', 'math', 'orthography']);
+    assert.deepStrictEqual(ids, ['clock', 'math', 'orthography', 'flags_logos']);
   });
 
   it('każdy zarejestrowany moduł spełnia standardowy kontrakt modułu edukacyjnego', () => {
@@ -40,6 +41,7 @@ describe('registry - Rejestr modułów przedmiotowych', () => {
     assert.strictEqual(getModuleById('clock'), clockModule);
     assert.strictEqual(getModuleById('math'), mathModule);
     assert.strictEqual(getModuleById('orthography'), orthographyModule);
+    assert.strictEqual(getModuleById('flags_logos'), flagsLogosModule);
   });
 
   it('getModuleById zwraca moduł domyślny (MODULES[0]) dla nieznanego id', () => {

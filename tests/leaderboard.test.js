@@ -31,6 +31,9 @@ describe('leaderboard - Moduł rankingu Top 10', () => {
     it('poprawnie rozpoznaje moduł z pola moduleId', () => {
       assert.strictEqual(resolveEntryModuleId({ moduleId: 'math' }), 'math');
       assert.strictEqual(resolveEntryModuleId({ moduleId: 'orthography' }), 'orthography');
+      assert.strictEqual(resolveEntryModuleId({ moduleId: 'flags_logos' }), 'flags_logos');
+      assert.strictEqual(resolveEntryModuleId({ moduleId: 'flags_logos_flags' }), 'flags_logos');
+      assert.strictEqual(resolveEntryModuleId({ moduleId: 'flags_logos_logos' }), 'flags_logos');
       assert.strictEqual(resolveEntryModuleId({ moduleId: 'clock' }), 'clock');
     });
 
@@ -40,6 +43,8 @@ describe('leaderboard - Moduł rankingu Top 10', () => {
       assert.strictEqual(resolveEntryModuleId({ mode: 'word' }), 'orthography');
       assert.strictEqual(resolveEntryModuleId({ mode: 'spot' }), 'orthography');
       assert.strictEqual(resolveEntryModuleId({ mode: 'orthography' }), 'orthography');
+      assert.strictEqual(resolveEntryModuleId({ mode: 'flags' }), 'flags_logos');
+      assert.strictEqual(resolveEntryModuleId({ mode: 'logos' }), 'flags_logos');
       assert.strictEqual(resolveEntryModuleId({ mode: 'digital' }), 'clock');
       assert.strictEqual(resolveEntryModuleId({ mode: 'words' }), 'clock');
     });
@@ -254,6 +259,52 @@ describe('leaderboard - Moduł rankingu Top 10', () => {
       assert.strictEqual(savedPayload[0].name, 'SuperBystrzak');
       assert.strictEqual(savedPayload[0].score, 25);
       assert.strictEqual(localStorage.getItem('zegar_last_player_name_v1'), 'SuperBystrzak');
+    });
+
+    it('rozróżnia w rankingu wyniki dla Flag i Logotypów (osobne listy Top 10 oraz odznaki)', async () => {
+      leaderboardState.byModule = {
+        flags_logos_flags: [
+          {
+            id: 'fl1',
+            name: 'Geograf',
+            score: 18,
+            moduleId: 'flags_logos',
+            mode: 'flags',
+            meta: { quizType: 'flags', continents: ['europe', 'asia'] },
+            date: '2026-11-10T12:00:00Z'
+          }
+        ],
+        flags_logos_logos: [
+          {
+            id: 'lg1',
+            name: 'ZnawcaMarek',
+            score: 22,
+            moduleId: 'flags_logos',
+            mode: 'logos',
+            meta: { quizType: 'logos', categories: ['automotive', 'tech'] },
+            date: '2026-11-10T13:00:00Z'
+          }
+        ]
+      };
+
+      // Widok rankingu Flag
+      renderRankingList('pl', 'flags_logos', 'flags');
+      const container = document.getElementById('ranking-list-container');
+      const title = document.getElementById('ranking-modal-title');
+      assert.ok(title.textContent.includes('Flagi'), 'Nagłówek powinien wskazywać podkategorię Flagi');
+      assert.ok(container.textContent.includes('Geograf'));
+      assert.ok(!container.textContent.includes('ZnawcaMarek'), 'Lista Flag nie powinna mieszać się z Logotypami');
+      assert.ok(container.textContent.includes('🚩 Flagi • Europa, Azja'));
+
+      // Przełączenie na widok rankingu Logotypów przyciskiem w modalu
+      const logosTabBtn = container.querySelector('button[data-ranking-submode="logos"]');
+      assert.ok(logosTabBtn, 'Brak przełącznika podkategorii Logotypy w modalu rankingu');
+      logosTabBtn.click();
+
+      assert.ok(title.textContent.includes('Logotypy'), 'Nagłówek powinien wskazywać podkategorię Logotypy');
+      assert.ok(container.textContent.includes('ZnawcaMarek'));
+      assert.ok(!container.textContent.includes('Geograf'));
+      assert.ok(container.textContent.includes('🏷️ Logotypy • Moto, Tech'));
     });
   });
 });

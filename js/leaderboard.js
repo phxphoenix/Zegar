@@ -26,8 +26,9 @@ const ORTHO_CAT_SHORT = {
 
 export const leaderboardState = {
   activeModuleId: 'clock',
-  byModule: {}, // { clock: [...], math: [...], orthography: [...] }
-  list: [],     // Aktualnie wyświetlana lista Top 10 dla aktywnego modułu
+  activeSubMode: 'flags', // 'flags' | 'logos' (dla modułu flags_logos)
+  byModule: {}, // { clock: [...], math: [...], orthography: [...], flags_logos_flags: [...], flags_logos_logos: [...] }
+  list: [],     // Aktualnie wyświetlana lista Top 10 dla aktywnego modułu/podtrybu
   pendingScore: null, // { score: number, moduleId: string, mode: string, meta: object }
   lastSavedId: null,
   isSavingScore: false
@@ -43,29 +44,71 @@ function getFirebaseRootEndpoint() {
   return base ? `${base}/leaderboard.json` : null;
 }
 
-function getFirebaseModuleEndpoint(moduleId) {
+function getFirebaseModuleEndpoint(bucketKey) {
   const base = getFirebaseBaseUrl();
-  return base ? `${base}/leaderboard/${encodeURIComponent(moduleId)}.json` : null;
+  return base ? `${base}/leaderboard/${encodeURIComponent(bucketKey)}.json` : null;
 }
 
 export function resolveEntryModuleId(entry) {
   if (!entry || typeof entry !== 'object') return 'clock';
+  if (entry.moduleId === 'flags_logos_flags' || entry.moduleId === 'flags_logos_logos') {
+    return 'flags_logos';
+  }
   if (entry.moduleId) return entry.moduleId;
   if (entry.mode === 'math') return 'math';
   if (entry.mode === 'gap' || entry.mode === 'word' || entry.mode === 'spot' || entry.mode === 'orthography') {
     return 'orthography';
   }
+  if (entry.mode === 'flags' || entry.mode === 'logos') {
+    return 'flags_logos';
+  }
   return 'clock';
 }
 
-function normalizeEntry(entry, forcedModuleId = null) {
+export function resolveStorageBucketKey(moduleId, subMode = null) {
+  const modId = moduleId || leaderboardState.activeModuleId || 'clock';
+  if (modId === 'flags_logos_flags' || modId === 'flags_logos_logos') {
+    return modId;
+  }
+  if (modId === 'flags_logos') {
+    const effectiveSub = subMode || leaderboardState.activeSubMode || 'flags';
+    return effectiveSub === 'logos' ? 'flags_logos_logos' : 'flags_logos_flags';
+  }
+  return modId;
+}
+
+function normalizeEntry(entry, forcedBucketOrModuleId = null) {
   if (!entry || typeof entry !== 'object') return null;
-  const moduleId = forcedModuleId || resolveEntryModuleId(entry);
-  const mode = entry.mode || (moduleId === 'math' ? 'math' : moduleId === 'orthography' ? 'gap' : 'digital');
+  let moduleId = resolveEntryModuleId(entry);
+  let forcedSubMode = null;
+
+  if (forcedBucketOrModuleId === 'flags_logos_flags') {
+    moduleId = 'flags_logos';
+    forcedSubMode = 'flags';
+  } else if (forcedBucketOrModuleId === 'flags_logos_logos') {
+    moduleId = 'flags_logos';
+    forcedSubMode = 'logos';
+  } else if (forcedBucketOrModuleId) {
+    moduleId = forcedBucketOrModuleId;
+  }
+
+  const defaultMode =
+    moduleId === 'math'
+      ? 'math'
+      : moduleId === 'orthography'
+      ? 'gap'
+      : moduleId === 'flags_logos'
+      ? forcedSubMode || entry.meta?.quizType || 'flags'
+      : 'digital';
+
+  const mode = forcedSubMode || entry.mode || defaultMode;
   const meta = entry.meta && typeof entry.meta === 'object' ? { ...entry.meta } : {};
 
   if (moduleId === 'clock' && !meta.mode) {
     meta.mode = mode === 'words' ? 'words' : 'digital';
+  }
+  if (moduleId === 'flags_logos' && !meta.quizType) {
+    meta.quizType = mode === 'logos' ? 'logos' : 'flags';
   }
 
   return {
@@ -112,8 +155,12 @@ function splitFlatListByModule(flatList) {
 
     const normalized = normalizeEntry(rawItem);
     const modId = normalized.moduleId;
-    if (!grouped[modId]) grouped[modId] = [];
-    grouped[modId].push(normalized);
+    const bucketKey =
+      modId === 'flags_logos'
+        ? resolveStorageBucketKey('flags_logos', normalized.mode)
+        : modId;
+    if (!grouped[bucketKey]) grouped[bucketKey] = [];
+    grouped[bucketKey].push(normalized);
   });
 
   Object.keys(grouped).forEach(modId => {
@@ -136,7 +183,25 @@ function normalizePerModuleMap(rawMap) {
     const normalizedArr = arr
       .map(item => normalizeEntry(item, modId))
       .filter(Boolean);
-    result[modId] = sortLeaderboard(normalizedArr);
+
+    if (modId === 'flags_logos') {
+      const flagsArr = normalizedArr.filter(it => it.mode !== 'logos');
+      const logosArr = normalizedArr.filter(it => it.mode === 'logos');
+      if (flagsArr.length > 0) {
+        result.flags_logos_flags = sortLeaderboard([
+          ...(result.flags_logos_flags || []),
+          ...flagsArr
+        ]);
+      }
+      if (logosArr.length > 0) {
+        result.flags_logos_logos = sortLeaderboard([
+          ...(result.flags_logos_logos || []),
+          ...logosArr
+        ]);
+      }
+    } else {
+      result[modId] = sortLeaderboard([...(result[modId] || []), ...normalizedArr]);
+    }
   });
 
   return result;
@@ -184,9 +249,32 @@ function saveLocalCacheAll(byModuleMap) {
   }
 }
 
-function syncActiveModuleList(moduleId) {
-  const modId = moduleId || leaderboardState.activeModuleId || 'clock';
+function syncActiveModuleList(moduleId, subMode = null) {
+  let modId = moduleId || leaderboardState.activeModuleId || 'clock';
+  if (modId === 'flags_logos_flags') {
+    modId = 'flags_logos';
+    subMode = 'flags';
+  } else if (modId === 'flags_logos_logos') {
+    modId = 'flags_logos';
+    subMode = 'logos';
+  }
+
   leaderboardState.activeModuleId = modId;
+  if (subMode === 'flags' || subMode === 'logos') {
+    leaderboardState.activeSubMode = subMode;
+  }
+
+  if (modId === 'flags_logos') {
+    const effectiveSub = leaderboardState.activeSubMode === 'logos' ? 'logos' : 'flags';
+    const bucketKey = resolveStorageBucketKey('flags_logos', effectiveSub);
+    const bucketList = leaderboardState.byModule[bucketKey] || [];
+    const directShared = (leaderboardState.byModule.flags_logos || []).filter(item =>
+      effectiveSub === 'logos' ? item.mode === 'logos' : item.mode !== 'logos'
+    );
+    leaderboardState.list = sortLeaderboard([...bucketList, ...directShared]);
+    return leaderboardState.list;
+  }
+
   leaderboardState.list = leaderboardState.byModule[modId] || [];
   return leaderboardState.list;
 }
@@ -198,9 +286,12 @@ export function qualifiesForTop10(score, list) {
   return score >= sorted[sorted.length - 1].score;
 }
 
-export async function fetchLeaderboard(lang = 'pl', moduleId = null) {
+export async function fetchLeaderboard(lang = 'pl', moduleId = null, subMode = null) {
   const targetModuleId = moduleId || leaderboardState.activeModuleId || 'clock';
   leaderboardState.activeModuleId = targetModuleId;
+  if (subMode === 'flags' || subMode === 'logos') {
+    leaderboardState.activeSubMode = subMode;
+  }
 
   const rootEndpoint = getFirebaseRootEndpoint();
   const dict = i18n[lang];
@@ -209,7 +300,7 @@ export async function fetchLeaderboard(lang = 'pl', moduleId = null) {
   if (!rootEndpoint) {
     leaderboardState.byModule = loadLocalCacheAll();
     if (statusEl) statusEl.textContent = dict.syncLocalFallback;
-    return syncActiveModuleList(targetModuleId);
+    return syncActiveModuleList(targetModuleId, subMode);
   }
 
   try {
@@ -244,25 +335,36 @@ export async function fetchLeaderboard(lang = 'pl', moduleId = null) {
     leaderboardState.byModule = byModule;
     saveLocalCacheAll(byModule);
     if (statusEl) statusEl.textContent = dict.syncCloudOk;
-    return syncActiveModuleList(targetModuleId);
+    return syncActiveModuleList(targetModuleId, subMode);
   } catch (err) {
     console.warn('Firebase fetch fallback to local cache:', err);
     leaderboardState.byModule = loadLocalCacheAll();
     if (statusEl) statusEl.textContent = dict.syncCloudError;
-    return syncActiveModuleList(targetModuleId);
+    return syncActiveModuleList(targetModuleId, subMode);
   }
 }
 
 async function saveEntryToLeaderboard(newEntry, lang) {
-  const moduleId = newEntry.moduleId || leaderboardState.activeModuleId || 'clock';
-  const currentModuleList = await fetchLeaderboard(lang, moduleId);
-  const updatedModuleList = sortLeaderboard([normalizeEntry(newEntry, moduleId), ...currentModuleList]);
+  const moduleId = resolveEntryModuleId(newEntry);
+  const subMode =
+    moduleId === 'flags_logos'
+      ? newEntry.mode === 'logos' || newEntry.meta?.quizType === 'logos'
+        ? 'logos'
+        : 'flags'
+      : null;
+  const bucketKey = resolveStorageBucketKey(moduleId, subMode);
 
-  leaderboardState.byModule[moduleId] = updatedModuleList;
-  syncActiveModuleList(moduleId);
+  const currentModuleList = await fetchLeaderboard(lang, moduleId, subMode);
+  const updatedModuleList = sortLeaderboard([
+    normalizeEntry(newEntry, bucketKey),
+    ...currentModuleList
+  ]);
+
+  leaderboardState.byModule[bucketKey] = updatedModuleList;
+  syncActiveModuleList(moduleId, subMode);
   saveLocalCacheAll(leaderboardState.byModule);
 
-  const moduleEndpoint = getFirebaseModuleEndpoint(moduleId);
+  const moduleEndpoint = getFirebaseModuleEndpoint(bucketKey);
   if (moduleEndpoint) {
     try {
       const res = await fetch(moduleEndpoint, {
@@ -272,7 +374,7 @@ async function saveEntryToLeaderboard(newEntry, lang) {
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
     } catch (err) {
-      console.error(`Failed to save ${moduleId} leaderboard to Firebase:`, err);
+      console.error(`Failed to save ${bucketKey} leaderboard to Firebase:`, err);
     }
   }
   return updatedModuleList;
@@ -313,6 +415,33 @@ function formatEntryBadge(entry, dict) {
     };
   }
 
+  if (moduleId === 'flags_logos') {
+    const isLogos = entry.mode === 'logos' || entry.meta?.quizType === 'logos';
+    const flDict = dict.flags_logos;
+
+    if (isLogos) {
+      const cats = Array.isArray(entry.meta?.categories) ? entry.meta.categories : [];
+      const catSummary =
+        cats.length === 0 || cats.length >= 6
+          ? dict.badges.allCategories
+          : cats.map(c => flDict?.logoCategories?.[c]?.short || c).join(', ');
+      return {
+        text: `${dict.badges.logosPrefix} • ${catSummary}`,
+        className: 'bg-purple-100 text-purple-800 px-2 py-0.5 rounded-md font-semibold'
+      };
+    }
+
+    const conts = Array.isArray(entry.meta?.continents) ? entry.meta.continents : [];
+    const contSummary =
+      conts.length === 0 || conts.length >= 6
+        ? dict.badges.allContinents
+        : conts.map(c => flDict?.continents?.[c]?.short || c).join(', ');
+    return {
+      text: `${dict.badges.flagsPrefix} • ${contSummary}`,
+      className: 'bg-sky-100 text-sky-800 px-2 py-0.5 rounded-md font-semibold'
+    };
+  }
+
   if (entry.meta?.customBadge) {
     return {
       text: entry.meta.customBadge,
@@ -328,10 +457,26 @@ function formatEntryBadge(entry, dict) {
   };
 }
 
-export function updateRankingModalHeader(lang = 'pl', moduleId = null) {
+export function updateRankingModalHeader(lang = 'pl', moduleId = null, subMode = null) {
   const dict = i18n[lang];
-  const modId = moduleId || leaderboardState.activeModuleId || 'clock';
-  const modLabel = dict.modules[modId]?.navLabel || modId;
+  let modId = moduleId || leaderboardState.activeModuleId || 'clock';
+  if (modId === 'flags_logos_flags') {
+    modId = 'flags_logos';
+    subMode = 'flags';
+  } else if (modId === 'flags_logos_logos') {
+    modId = 'flags_logos';
+    subMode = 'logos';
+  }
+
+  let modLabel = dict.modules[modId]?.navLabel || modId;
+  if (modId === 'flags_logos') {
+    const effectiveSub = subMode || leaderboardState.activeSubMode || 'flags';
+    const subLabel =
+      dict.flags_logos?.quizTypes?.[effectiveSub]?.short ||
+      (effectiveSub === 'logos' ? 'Logo' : 'Flagi');
+    modLabel = `${modLabel} (${subLabel})`;
+  }
+
   const titleEl = document.getElementById('ranking-modal-title');
   if (titleEl) {
     titleEl.textContent = dict.rankingTitleForModule
@@ -340,15 +485,50 @@ export function updateRankingModalHeader(lang = 'pl', moduleId = null) {
   }
 }
 
-export function renderRankingList(lang = 'pl', moduleId = null) {
+export function renderRankingList(lang = 'pl', moduleId = null, subMode = null) {
   const container = document.getElementById('ranking-list-container');
   if (!container) return;
   const dict = i18n[lang];
-  const targetModuleId = moduleId || leaderboardState.activeModuleId || 'clock';
-  syncActiveModuleList(targetModuleId);
-  updateRankingModalHeader(lang, targetModuleId);
+  let targetModuleId = moduleId || leaderboardState.activeModuleId || 'clock';
+  if (targetModuleId === 'flags_logos_flags') {
+    targetModuleId = 'flags_logos';
+    subMode = 'flags';
+  } else if (targetModuleId === 'flags_logos_logos') {
+    targetModuleId = 'flags_logos';
+    subMode = 'logos';
+  }
+
+  syncActiveModuleList(targetModuleId, subMode);
+  updateRankingModalHeader(lang, targetModuleId, leaderboardState.activeSubMode);
 
   container.innerHTML = '';
+
+  // Przełącznik podkategorii rankingu dla modułu Flaga/Logo (Flagi vs Logotypy)
+  if (targetModuleId === 'flags_logos' && dict.flags_logos) {
+    const tabsWrapper = document.createElement('div');
+    tabsWrapper.id = 'ranking-submode-tabs';
+    tabsWrapper.className = 'grid grid-cols-2 gap-2 mb-3 p-1 bg-slate-100 rounded-2xl';
+
+    ['flags', 'logos'].forEach(modeKey => {
+      const isActive = leaderboardState.activeSubMode === modeKey;
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.setAttribute('data-ranking-submode', modeKey);
+      btn.className = isActive
+        ? 'py-2 px-3 rounded-xl font-extrabold text-xs sm:text-sm bg-indigo-600 text-white shadow-sm transition'
+        : 'py-2 px-3 rounded-xl font-bold text-xs sm:text-sm text-slate-600 hover:bg-slate-200/70 transition';
+      btn.textContent = dict.flags_logos.quizTypes[modeKey].label;
+      btn.addEventListener('click', () => {
+        if (leaderboardState.activeSubMode !== modeKey) {
+          leaderboardState.activeSubMode = modeKey;
+          renderRankingList(lang, 'flags_logos', modeKey);
+        }
+      });
+      tabsWrapper.appendChild(btn);
+    });
+
+    container.appendChild(tabsWrapper);
+  }
 
   if (!leaderboardState.list || leaderboardState.list.length === 0) {
     const emptyDiv = document.createElement('div');
@@ -415,13 +595,22 @@ export function renderRankingList(lang = 'pl', moduleId = null) {
   });
 }
 
-export async function openRankingModal(lang = 'pl', withNewScoreForm = false, moduleId = null) {
+export async function openRankingModal(lang = 'pl', withNewScoreForm = false, moduleId = null, subMode = null) {
   const targetModuleId =
     moduleId ||
     leaderboardState.pendingScore?.moduleId ||
     leaderboardState.activeModuleId ||
     'clock';
   leaderboardState.activeModuleId = targetModuleId;
+
+  const targetSubMode =
+    subMode ||
+    (targetModuleId === 'flags_logos' && leaderboardState.pendingScore?.mode) ||
+    leaderboardState.activeSubMode ||
+    'flags';
+  if (targetModuleId === 'flags_logos') {
+    leaderboardState.activeSubMode = targetSubMode === 'logos' ? 'logos' : 'flags';
+  }
 
   const modal = document.getElementById('ranking-modal');
   const formSection = document.getElementById('new-score-section');
@@ -453,8 +642,8 @@ export async function openRankingModal(lang = 'pl', withNewScoreForm = false, mo
   }
 
   container.innerHTML = `<div class="text-center py-10 text-slate-400 font-medium text-sm">${dict.loadingRanking}</div>`;
-  await fetchLeaderboard(lang, targetModuleId);
-  renderRankingList(lang, targetModuleId);
+  await fetchLeaderboard(lang, targetModuleId, leaderboardState.activeSubMode);
+  renderRankingList(lang, targetModuleId, leaderboardState.activeSubMode);
 }
 
 export function closeRankingModal() {

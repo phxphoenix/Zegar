@@ -64,6 +64,14 @@ export const i18n = {
           word: 'Który wyraz jest napisany poprawnie?',
           spot: 'Bystre oko: wskaż jedyny wyraz napisany BEZ błędu!'
         }
+      },
+      flags_logos: {
+        navLabel: '🚩 Flaga/Logo',
+        questionTitle: 'Co przedstawia ta ilustracja?',
+        questionTitleByMode: {
+          flags: 'Do jakiego kraju należy ta flaga?',
+          logos: 'Jakiej marki jest to logotyp?'
+        }
       }
     },
 
@@ -73,6 +81,10 @@ export const i18n = {
       clockWords: '🕒 Zegar • Słownie',
       mathPrefix: '🧮 Matematyka',
       orthoPrefix: '✍️ Ortografia',
+      flagsPrefix: '🚩 Flagi',
+      logosPrefix: '🏷️ Logotypy',
+      allContinents: 'Wszystkie kontynenty',
+      allCategories: 'Wszystkie kategorie',
       gradeShort: (g) => `Kl. ${g}`
     },
 
@@ -183,6 +195,50 @@ export const i18n = {
       spotStageSubtitle: 'Trzy poniższe wyrazy mają błąd ortograficzny, a tylko JEDEN jest napisany poprawnie!',
       wordStagePrompt: 'Wskaż poprawną pisownię wyrazu pasującego do ilustracji i zdania:',
       enGlossPrefix: '🇬🇧 Ang.:'
+    },
+
+    // Moduł: Flaga/Logo
+    flags_logos: {
+      panelTitle: 'Konfiguracja Flaga / Logo',
+      randomBtn: '🎲 Nowe pytanie',
+      lblQuizType: 'Typ quizu (wybór jednokrotny)',
+      quizTypes: {
+        flags: {
+          label: '🚩 Flagi państw',
+          short: 'Flagi',
+          desc: 'Rozpoznawanie flag wszystkich 197 krajów świata z podziałem na kontynenty'
+        },
+        logos: {
+          label: '🏷️ Logotypy marek',
+          short: 'Logotypy',
+          desc: 'Rozpoznawanie najpopularniejszych światowych marek z podziałem na kategorie'
+        }
+      },
+      lblContinents: 'Kontynenty (wielokrotny wybór – min. 1)',
+      selectAllBtn: 'Zaznacz wszystkie',
+      continents: {
+        europe: { label: '🌍 Europa', short: 'Europa' },
+        asia: { label: '🌏 Azja', short: 'Azja' },
+        africa: { label: '🌍 Afryka', short: 'Afryka' },
+        north_america: { label: '🌎 Ameryka Płn.', short: 'Am. Płn.' },
+        south_america: { label: '🌎 Ameryka Płd.', short: 'Am. Płd.' },
+        oceania: { label: '🌏 Australia i Oceania', short: 'Oceania' }
+      },
+      lblLogoCategories: 'Kategorie marek (wielokrotny wybór – min. 1)',
+      logoCategories: {
+        automotive: { label: '🚗 Motoryzacja', short: 'Moto' },
+        tech: { label: '💻 Technologia i IT', short: 'Tech' },
+        fashion: { label: '👟 Moda i Sport', short: 'Moda/Sport' },
+        food: { label: '🍔 Jedzenie i Napoje', short: 'Jedzenie' },
+        entertainment: { label: '🎮 Rozrywka i Media', short: 'Rozrywka' },
+        other: { label: '📦 Inne', short: 'Inne' }
+      },
+      showHintBtn: '💡 Pokaż podpowiedź (opis charakterystyczny)',
+      hideHintBtn: '🙈 Ukryj podpowiedź',
+      capitalLabel: '🏛️ Stolica:',
+      originLabel: '🌐 Kraj pochodzenia:',
+      flagPrompt: 'Wskaż państwo, do którego należy powyższa flaga:',
+      logoPrompt: 'Wskaż nazwę marki, do której należy ten symbol:'
     }
   },
 
@@ -245,6 +301,14 @@ export const i18n = {
           word: 'Which Polish spelling is correct?',
           spot: 'Sharp Eye: spot the ONLY word spelled WITHOUT an error!'
         }
+      },
+      flags_logos: {
+        navLabel: '🚩 Flag/Logo',
+        questionTitle: 'What does this image represent?',
+        questionTitleByMode: {
+          flags: 'Which country does this flag belong to?',
+          logos: 'Which brand does this logo belong to?'
+        }
       }
     },
 
@@ -253,6 +317,10 @@ export const i18n = {
       clockWords: '🕒 Clock • Words',
       mathPrefix: '🧮 Math',
       orthoPrefix: '✍️ Spelling',
+      flagsPrefix: '🚩 Flags',
+      logosPrefix: '🏷️ Logos',
+      allContinents: 'All continents',
+      allCategories: 'All categories',
       gradeShort: (g) => `Gr. ${g}`
     },
 
@@ -362,6 +430,50 @@ export const i18n = {
       spotStageSubtitle: 'Three words below contain a spelling mistake, and only ONE is written correctly!',
       wordStagePrompt: 'Pick the correct spelling for the word matching the picture and sentence:',
       enGlossPrefix: '🇬🇧 Meaning:'
+    },
+
+    // Module: Flag/Logo
+    flags_logos: {
+      panelTitle: 'Flag / Logo Configuration',
+      randomBtn: '🎲 New question',
+      lblQuizType: 'Quiz type (single choice)',
+      quizTypes: {
+        flags: {
+          label: '🚩 Country Flags',
+          short: 'Flags',
+          desc: 'Recognize flags of all 197 countries of the world divided by continents'
+        },
+        logos: {
+          label: '🏷️ Brand Logos',
+          short: 'Logos',
+          desc: 'Recognize the world’s most popular brands divided by categories'
+        }
+      },
+      lblContinents: 'Continents (multi-select – pick at least 1)',
+      selectAllBtn: 'Select all',
+      continents: {
+        europe: { label: '🌍 Europe', short: 'Europe' },
+        asia: { label: '🌏 Asia', short: 'Asia' },
+        africa: { label: '🌍 Africa', short: 'Africa' },
+        north_america: { label: '🌎 North America', short: 'N. America' },
+        south_america: { label: '🌎 South America', short: 'S. America' },
+        oceania: { label: '🌏 Australia & Oceania', short: 'Oceania' }
+      },
+      lblLogoCategories: 'Brand categories (multi-select – pick at least 1)',
+      logoCategories: {
+        automotive: { label: '🚗 Automotive', short: 'Auto' },
+        tech: { label: '💻 Technology & IT', short: 'Tech' },
+        fashion: { label: '👟 Fashion & Sport', short: 'Fashion' },
+        food: { label: '🍔 Food & Drinks', short: 'Food' },
+        entertainment: { label: '🎮 Entertainment & Media', short: 'Entertainment' },
+        other: { label: '📦 Other', short: 'Other' }
+      },
+      showHintBtn: '💡 Show hint (characteristic description)',
+      hideHintBtn: '🙈 Hide hint',
+      capitalLabel: '🏛️ Capital:',
+      originLabel: '🌐 Country of origin:',
+      flagPrompt: 'Pick the country that this flag belongs to:',
+      logoPrompt: 'Pick the brand that this logo belongs to:'
     }
   }
 };

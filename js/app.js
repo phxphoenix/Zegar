@@ -67,10 +67,15 @@ function updateShellLabels() {
   const dict = i18n[appState.lang];
   const modDict = dict.modules[appState.activeModuleId];
   const activeMod = getActiveModule();
+  const currentMode = activeMod?.getRankingPayload?.()?.mode;
+
+  if (appState.activeModuleId === 'flags_logos' && (currentMode === 'flags' || currentMode === 'logos')) {
+    leaderboardState.activeSubMode = currentMode;
+  }
 
   document.getElementById('score-badge').textContent = `${dict.score}: ${appState.score}`;
   document.getElementById('ranking-btn').textContent = dict.rankingBtn;
-  updateRankingModalHeader(appState.lang, appState.activeModuleId);
+  updateRankingModalHeader(appState.lang, appState.activeModuleId, leaderboardState.activeSubMode);
   document.getElementById('player-name-input').placeholder = dict.namePlaceholder;
   document.getElementById('save-score-btn').textContent = leaderboardState.isSavingScore ? dict.savingBtn : dict.saveBtn;
   document.getElementById('ranking-close-btn').textContent = dict.closeBtn;
@@ -190,14 +195,15 @@ async function checkAnswer(selected, btnElement) {
     updateShellLabels();
 
     if (achievedScore > 0) {
-      const latestSectionList = await fetchLeaderboard(appState.lang, appState.activeModuleId);
+      const subMode = rankingPayload?.mode || null;
+      const latestSectionList = await fetchLeaderboard(appState.lang, appState.activeModuleId, subMode);
       if (qualifiesForTop10(achievedScore, latestSectionList)) {
         leaderboardState.pendingScore = {
           score: achievedScore,
           ...rankingPayload,
           moduleId: appState.activeModuleId
         };
-        openRankingModal(appState.lang, true, appState.activeModuleId);
+        openRankingModal(appState.lang, true, appState.activeModuleId, subMode);
       }
     }
   }
@@ -316,7 +322,8 @@ async function finishCurrentQuiz() {
   const rankingPayload = activeMod.getRankingPayload();
 
   try {
-    const latestList = await fetchLeaderboard(appState.lang, appState.activeModuleId);
+    const subMode = rankingPayload?.mode || null;
+    const latestList = await fetchLeaderboard(appState.lang, appState.activeModuleId, subMode);
     const qualifies = qualifiesForTop10(currentScore, latestList);
 
     if (qualifies) {
@@ -340,7 +347,7 @@ async function finishCurrentQuiz() {
       const nextPayload = activeMod.generateQuestion(appState.lang, true);
       applyQuestionPayload(nextPayload);
 
-      openRankingModal(appState.lang, true, appState.activeModuleId);
+      openRankingModal(appState.lang, true, appState.activeModuleId, subMode);
     } else {
       // Wynik dodatni, ale nie mieści się jeszcze w Top 10
       const sorted = sortLeaderboard(latestList);
@@ -367,7 +374,9 @@ async function finishCurrentQuiz() {
 // Inicjalizacja aplikacji i podpięcie zdarzeń globalnych
 function initApp() {
   document.getElementById('ranking-btn').addEventListener('click', () => {
-    openRankingModal(appState.lang, false, appState.activeModuleId);
+    const activeMod = getActiveModule();
+    const subMode = activeMod?.getRankingPayload?.()?.mode || null;
+    openRankingModal(appState.lang, false, appState.activeModuleId, subMode);
   });
 
   document.getElementById('lang-btn').addEventListener('click', toggleLang);

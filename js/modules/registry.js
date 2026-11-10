@@ -7,11 +7,13 @@
 import { clockModule } from './clock.js';
 import { mathModule } from './math.js';
 import { orthographyModule } from './orthography.js';
+import { flagsLogosModule } from './flagsLogos.js';
 
 export const MODULES = [
   clockModule,
   mathModule,
-  orthographyModule
+  orthographyModule,
+  flagsLogosModule
 ];
 
 export function getModuleById(id) {

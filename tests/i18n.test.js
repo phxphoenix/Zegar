@@ -86,8 +86,8 @@ describe('i18n - Słownik wielojęzyczny', () => {
     assert.ok(i18n.en.finishRecordBedtimeMsg(12).includes('12 pts'));
   });
 
-  it('posiada kompletną strukturę modułów (clock, math, orthography)', () => {
-    const modules = ['clock', 'math', 'orthography'];
+  it('posiada kompletną strukturę modułów (clock, math, orthography, flags_logos)', () => {
+    const modules = ['clock', 'math', 'orthography', 'flags_logos'];
     for (const mod of modules) {
       assert.ok(i18n.pl.modules[mod], `Brak sekcji pl.modules.${mod}`);
       assert.ok(i18n.en.modules[mod], `Brak sekcji en.modules.${mod}`);
@@ -100,6 +100,12 @@ describe('i18n - Słownik wielojęzyczny', () => {
     for (const m of modes) {
       assert.ok(i18n.pl.modules.orthography.questionTitleByMode[m], `Brak pytania dla trybu ${m} w pl`);
       assert.ok(i18n.en.modules.orthography.questionTitleByMode[m], `Brak pytania dla trybu ${m} w en`);
+    }
+
+    // Flaga/Logo posiada specyficzne pytania dla flag i logotypów
+    for (const flMode of ['flags', 'logos']) {
+      assert.ok(i18n.pl.modules.flags_logos.questionTitleByMode[flMode]);
+      assert.ok(i18n.en.modules.flags_logos.questionTitleByMode[flMode]);
     }
   });
 
