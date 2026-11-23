@@ -232,13 +232,10 @@ describe('leaderboard - Moduł rankingu Top 10', () => {
       assert.ok(savedV2.clock && savedV2.math && savedV2.orthography);
     });
 
-    it('zapisuje nowy wynik gracza i aktualizuje listę', async () => {
-      let savedPayload = null;
-      env.setMockFetch(async (url, options) => {
-        if (options && options.method === 'PUT') {
-          savedPayload = JSON.parse(options.body);
-          return { ok: true, json: async () => ({}) };
-        }
+    it('zapisuje nowy wynik gracza wyłącznie lokalnie bez wysyłania danych do sieci (RODO / Kids Policy)', async () => {
+      let fetchCalled = false;
+      env.setMockFetch(async () => {
+        fetchCalled = true;
         return { ok: true, json: async () => ({}) };
       });
 
@@ -253,15 +250,17 @@ describe('leaderboard - Moduł rankingu Top 10', () => {
 
       await submitTop10Score('pl');
 
+      assert.strictEqual(fetchCalled, false, 'Gałąź biznesowa nie może wysyłać imion dzieci na zewnętrzny serwer');
       assert.strictEqual(leaderboardState.isSavingScore, false);
       assert.strictEqual(leaderboardState.pendingScore, null);
-      assert.ok(savedPayload);
-      assert.strictEqual(savedPayload[0].name, 'SuperBystrzak');
-      assert.strictEqual(savedPayload[0].score, 25);
+      const savedV2 = JSON.parse(localStorage.getItem('zegar_leaderboards_by_module_v2'));
+      assert.ok(savedV2 && Array.isArray(savedV2.math));
+      assert.strictEqual(savedV2.math[0].name, 'SuperBystrzak');
+      assert.strictEqual(savedV2.math[0].score, 25);
       assert.strictEqual(localStorage.getItem('zegar_last_player_name_v1'), 'SuperBystrzak');
     });
 
-    it('rozróżnia w rankingu wyniki dla Flag i Logotypów (osobne listy Top 10 oraz odznaki)', async () => {
+    it('wyświetla ranking Flag bez zakładki Logotypów w gałęzi biznesowej', async () => {
       leaderboardState.byModule = {
         flags_logos_flags: [
           {
@@ -273,38 +272,20 @@ describe('leaderboard - Moduł rankingu Top 10', () => {
             meta: { quizType: 'flags', continents: ['europe', 'asia'] },
             date: '2026-11-10T12:00:00Z'
           }
-        ],
-        flags_logos_logos: [
-          {
-            id: 'lg1',
-            name: 'ZnawcaMarek',
-            score: 22,
-            moduleId: 'flags_logos',
-            mode: 'logos',
-            meta: { quizType: 'logos', categories: ['automotive', 'tech'] },
-            date: '2026-11-10T13:00:00Z'
-          }
         ]
       };
 
-      // Widok rankingu Flag
       renderRankingList('pl', 'flags_logos', 'flags');
       const container = document.getElementById('ranking-list-container');
       const title = document.getElementById('ranking-modal-title');
-      assert.ok(title.textContent.includes('Flagi'), 'Nagłówek powinien wskazywać podkategorię Flagi');
+      assert.ok(title.textContent.includes('Flagi'), 'Nagłówek powinien wskazywać sekcję Flagi');
       assert.ok(container.textContent.includes('Geograf'));
-      assert.ok(!container.textContent.includes('ZnawcaMarek'), 'Lista Flag nie powinna mieszać się z Logotypami');
       assert.ok(container.textContent.includes('🚩 Flagi • Europa, Azja'));
-
-      // Przełączenie na widok rankingu Logotypów przyciskiem w modalu
-      const logosTabBtn = container.querySelector('button[data-ranking-submode="logos"]');
-      assert.ok(logosTabBtn, 'Brak przełącznika podkategorii Logotypy w modalu rankingu');
-      logosTabBtn.click();
-
-      assert.ok(title.textContent.includes('Logotypy'), 'Nagłówek powinien wskazywać podkategorię Logotypy');
-      assert.ok(container.textContent.includes('ZnawcaMarek'));
-      assert.ok(!container.textContent.includes('Geograf'));
-      assert.ok(container.textContent.includes('🏷️ Logotypy • Moto, Tech'));
+      assert.strictEqual(
+        container.querySelector('button[data-ranking-submode="logos"]'),
+        null,
+        'Modal rankingu nie powinien wyświetlać zakładki Logotypy'
+      );
     });
   });
 });

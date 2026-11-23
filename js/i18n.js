@@ -18,9 +18,9 @@ export const i18n = {
     emptyRanking: 'Brak zapisanych wyników w tej sekcji. Rozwiąż zadania i bądź pierwszy!',
     loadingRanking: '⏳ Pobieranie rankingu...',
     ptsUnit: 'pkt',
-    syncCloudOk: '☁️ Wspólny ranking online (Firebase)',
-    syncLocalFallback: '💾 Tryb lokalny (uzupełnij FIREBASE_DB_URL dla synchronizacji)',
-    syncCloudError: '⚠️ Błąd połączenia z chmurą – wyświetlono kopię lokalną',
+    syncCloudOk: '💾 Prywatny ranking rodzinny (zapisany na urządzeniu)',
+    syncLocalFallback: '💾 Prywatny ranking rodzinny (zapisany lokalnie na urządzeniu)',
+    syncCloudError: '⚠️ Błąd połączenia – wyświetlono kopię lokalną',
     defaultPlayerName: 'Gracz',
     hidePanel: '👁️ Ukryj opcje',
     showPanel: '⚙️ Opcje',
@@ -46,6 +46,24 @@ export const i18n = {
     finishSleepFeedback: '🌙 Dobrej nocy i kolorowych snów! Odpocznij przed kolejnymi wyzwaniami! ⭐',
     finishRecordBedtimeMsg: (pts) => `🌙 Świetny wynik na dobranoc! ${pts} pkt daje miejsce w Top 10! Wpisz swoje imię:`,
 
+    // Strefa Rodzica i Bramka Rodzicielska
+    parentZoneBtn: '🛡️ Dla Rodziców',
+    parentalGate: {
+      title: '🛡️ Strefa Rodzica – Weryfikacja',
+      desc: 'Aby otworzyć informacje dla rodziców i dokumenty prawne, rozwiąż krótkie zadanie dla dorosłych:',
+      placeholder: 'Wpisz wynik...',
+      confirmBtn: 'Potwierdź',
+      cancelBtn: 'Anuluj',
+      wrongAnswer: 'Niepoprawny wynik – spróbuj ponownie z nowym zadaniem.'
+    },
+    parentZone: {
+      title: '🛡️ Strefa Rodzica',
+      subtitle: 'Informacje prawne, prywatność dziecka i bezpieczeństwo aplikacji Akademia Bystrzaka.',
+      privacyLink: '🛡️ Polityka Prywatności (RODO / UE)',
+      termsLink: '📄 Regulamin aplikacji',
+      offlineNote: 'Wszystkie wyniki rankingu są zapisywane wyłącznie lokalnie na tym urządzeniu.'
+    },
+
     // Nazwy modułów w górnym pasku
     modules: {
       clock: {
@@ -66,11 +84,10 @@ export const i18n = {
         }
       },
       flags_logos: {
-        navLabel: '🚩 Flaga/Logo',
-        questionTitle: 'Co przedstawia ta ilustracja?',
+        navLabel: '🚩 Flagi',
+        questionTitle: 'Do jakiego kraju należy ta flaga?',
         questionTitleByMode: {
-          flags: 'Do jakiego kraju należy ta flaga?',
-          logos: 'Jakiej marki jest to logotyp?'
+          flags: 'Do jakiego kraju należy ta flaga?'
         }
       }
     },
@@ -197,21 +214,15 @@ export const i18n = {
       enGlossPrefix: '🇬🇧 Ang.:'
     },
 
-    // Moduł: Flaga/Logo
+    // Moduł: Flagi Świata (gałąź biznesowa – bez logotypów marek)
     flags_logos: {
-      panelTitle: 'Konfiguracja Flaga / Logo',
+      panelTitle: 'Konfiguracja Flag Świata',
       randomBtn: '🎲 Nowe pytanie',
-      lblQuizType: 'Typ quizu (wybór jednokrotny)',
       quizTypes: {
         flags: {
           label: '🚩 Flagi państw',
           short: 'Flagi',
           desc: 'Rozpoznawanie flag wszystkich 197 krajów świata z podziałem na kontynenty'
-        },
-        logos: {
-          label: '🏷️ Logotypy marek',
-          short: 'Logotypy',
-          desc: 'Rozpoznawanie najpopularniejszych światowych marek z podziałem na kategorie'
         }
       },
       lblContinents: 'Kontynenty (wielokrotny wybór – min. 1)',
@@ -224,21 +235,10 @@ export const i18n = {
         south_america: { label: '🌎 Ameryka Płd.', short: 'Am. Płd.' },
         oceania: { label: '🌏 Australia i Oceania', short: 'Oceania' }
       },
-      lblLogoCategories: 'Kategorie marek (wielokrotny wybór – min. 1)',
-      logoCategories: {
-        automotive: { label: '🚗 Motoryzacja', short: 'Moto' },
-        tech: { label: '💻 Technologia i IT', short: 'Tech' },
-        fashion: { label: '👟 Moda i Sport', short: 'Moda/Sport' },
-        food: { label: '🍔 Jedzenie i Napoje', short: 'Jedzenie' },
-        entertainment: { label: '🎮 Rozrywka i Media', short: 'Rozrywka' },
-        other: { label: '📦 Inne', short: 'Inne' }
-      },
       showHintBtn: '💡 Pokaż podpowiedź (opis charakterystyczny)',
       hideHintBtn: '🙈 Ukryj podpowiedź',
       capitalLabel: '🏛️ Stolica:',
-      originLabel: '🌐 Kraj pochodzenia:',
-      flagPrompt: 'Wskaż państwo, do którego należy powyższa flaga:',
-      logoPrompt: 'Wskaż nazwę marki, do której należy ten symbol:'
+      flagPrompt: 'Wskaż państwo, do którego należy powyższa flaga:'
     }
   },
 
@@ -256,9 +256,9 @@ export const i18n = {
     emptyRanking: 'No scores in this section yet. Answer questions and be the first!',
     loadingRanking: '⏳ Loading leaderboard...',
     ptsUnit: 'pts',
-    syncCloudOk: '☁️ Shared online leaderboard (Firebase)',
-    syncLocalFallback: '💾 Local mode (set FIREBASE_DB_URL for cloud sync)',
-    syncCloudError: '⚠️ Cloud connection error – showing local backup',
+    syncCloudOk: '💾 Private family leaderboard (saved on this device)',
+    syncLocalFallback: '💾 Private family leaderboard (saved locally on this device)',
+    syncCloudError: '⚠️ Connection error – showing local backup',
     defaultPlayerName: 'Player',
     hidePanel: '👁️ Hide options',
     showPanel: '⚙️ Options',
@@ -284,6 +284,24 @@ export const i18n = {
     finishSleepFeedback: '🌙 Good night and sweet dreams! Rest up for tomorrow\'s challenges! ⭐',
     finishRecordBedtimeMsg: (pts) => `🌙 Great bedtime score! ${pts} pts makes the Top 10! Enter your name:`,
 
+    // Parent Zone & Parental Gate
+    parentZoneBtn: '🛡️ For Parents',
+    parentalGate: {
+      title: '🛡️ Parent Zone – Verification',
+      desc: 'To open parent information and legal documents, please solve this quick adult check:',
+      placeholder: 'Enter answer...',
+      confirmBtn: 'Confirm',
+      cancelBtn: 'Cancel',
+      wrongAnswer: 'Incorrect answer – please try the new question.'
+    },
+    parentZone: {
+      title: '🛡️ Parent Zone',
+      subtitle: 'Legal information, child privacy, and safety settings for Smart Kids Academy.',
+      privacyLink: '🛡️ Privacy Policy (GDPR / Kids)',
+      termsLink: '📄 Terms of Service',
+      offlineNote: 'All leaderboard scores are saved exclusively locally on this device.'
+    },
+
     modules: {
       clock: {
         navLabel: '🕒 Clock',
@@ -303,11 +321,10 @@ export const i18n = {
         }
       },
       flags_logos: {
-        navLabel: '🚩 Flag/Logo',
-        questionTitle: 'What does this image represent?',
+        navLabel: '🚩 Flags',
+        questionTitle: 'Which country does this flag belong to?',
         questionTitleByMode: {
-          flags: 'Which country does this flag belong to?',
-          logos: 'Which brand does this logo belong to?'
+          flags: 'Which country does this flag belong to?'
         }
       }
     },
@@ -432,21 +449,15 @@ export const i18n = {
       enGlossPrefix: '🇬🇧 Meaning:'
     },
 
-    // Module: Flag/Logo
+    // Module: World Flags (business branch – no brand logos)
     flags_logos: {
-      panelTitle: 'Flag / Logo Configuration',
+      panelTitle: 'World Flags Configuration',
       randomBtn: '🎲 New question',
-      lblQuizType: 'Quiz type (single choice)',
       quizTypes: {
         flags: {
           label: '🚩 Country Flags',
           short: 'Flags',
           desc: 'Recognize flags of all 197 countries of the world divided by continents'
-        },
-        logos: {
-          label: '🏷️ Brand Logos',
-          short: 'Logos',
-          desc: 'Recognize the world’s most popular brands divided by categories'
         }
       },
       lblContinents: 'Continents (multi-select – pick at least 1)',
@@ -459,21 +470,10 @@ export const i18n = {
         south_america: { label: '🌎 South America', short: 'S. America' },
         oceania: { label: '🌏 Australia & Oceania', short: 'Oceania' }
       },
-      lblLogoCategories: 'Brand categories (multi-select – pick at least 1)',
-      logoCategories: {
-        automotive: { label: '🚗 Automotive', short: 'Auto' },
-        tech: { label: '💻 Technology & IT', short: 'Tech' },
-        fashion: { label: '👟 Fashion & Sport', short: 'Fashion' },
-        food: { label: '🍔 Food & Drinks', short: 'Food' },
-        entertainment: { label: '🎮 Entertainment & Media', short: 'Entertainment' },
-        other: { label: '📦 Other', short: 'Other' }
-      },
       showHintBtn: '💡 Show hint (characteristic description)',
       hideHintBtn: '🙈 Hide hint',
       capitalLabel: '🏛️ Capital:',
-      originLabel: '🌐 Country of origin:',
-      flagPrompt: 'Pick the country that this flag belongs to:',
-      logoPrompt: 'Pick the brand that this logo belongs to:'
+      flagPrompt: 'Pick the country that this flag belongs to:'
     }
   }
 };

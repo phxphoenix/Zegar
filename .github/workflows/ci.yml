@@ -2,9 +2,9 @@ name: CI Tests
 
 on:
   push:
-    branches: [ main, stage ]
+    branches: [ main, stage, business ]
   pull_request:
-    branches: [ main, stage ]
+    branches: [ main, stage, business ]
 
 jobs:
   test:
@@ -28,6 +28,9 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Build local CSS
+        run: npm run build:css
 
       - name: Run automated test suite
         run: npm test

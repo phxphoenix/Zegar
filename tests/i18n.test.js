@@ -102,10 +102,15 @@ describe('i18n - Słownik wielojęzyczny', () => {
       assert.ok(i18n.en.modules.orthography.questionTitleByMode[m], `Brak pytania dla trybu ${m} w en`);
     }
 
-    // Flaga/Logo posiada specyficzne pytania dla flag i logotypów
-    for (const flMode of ['flags', 'logos']) {
-      assert.ok(i18n.pl.modules.flags_logos.questionTitleByMode[flMode]);
-      assert.ok(i18n.en.modules.flags_logos.questionTitleByMode[flMode]);
+    // Moduł Flag posiada pytanie dla trybu flag (bez logotypów marek)
+    assert.ok(i18n.pl.modules.flags_logos.questionTitleByMode.flags);
+    assert.ok(i18n.en.modules.flags_logos.questionTitleByMode.flags);
+
+    // Bramka Rodzicielska i Strefa Rodzica w obu językach
+    for (const lang of ['pl', 'en']) {
+      assert.ok(i18n[lang].parentZoneBtn);
+      assert.ok(i18n[lang].parentalGate.title && i18n[lang].parentalGate.wrongAnswer);
+      assert.ok(i18n[lang].parentZone.privacyLink && i18n[lang].parentZone.termsLink);
     }
   });
 

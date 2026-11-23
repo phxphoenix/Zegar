@@ -1,63 +1,41 @@
-import { test, describe, it, beforeEach } from 'node:test';
+import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { createTestDOM } from './helpers/dom.js';
-import { flagsLogosModule, getFilteredPool } from '../js/modules/flagsLogos.js';
+import { flagsLogosModule } from '../js/modules/flagsLogos.js';
 import { FLAGS_DATA } from '../js/modules/flagsLogosData.js';
 
-describe('flagsLogos - Moduł Flaga/Logo', () => {
+describe('flagsLogos - Moduł Flagi Świata (gałąź biznesowa)', () => {
   let env;
 
   beforeEach(() => {
     env = createTestDOM();
   });
 
-  it('posiada poprawne id modułu ("flags_logos")', () => {
+  it('posiada poprawne id modułu ("flags_logos") i działa wyłącznie w trybie flag', () => {
     assert.strictEqual(flagsLogosModule.id, 'flags_logos');
+    const payload = flagsLogosModule.getRankingPayload();
+    assert.strictEqual(payload.mode, 'flags');
+    assert.strictEqual(payload.meta.quizType, 'flags');
   });
 
-  it('mountStage renderuje elementy sceny (odznakę kontekstową, ciało sceny, przycisk podpowiedzi)', () => {
+  it('mountStage renderuje elementy sceny i lokalny obraz flagi bez przełącznika logotypów', () => {
     const stage = document.getElementById('stage-container');
+    const config = document.getElementById('teacher-panel');
     flagsLogosModule.mountStage(stage, 'pl');
+    flagsLogosModule.mountConfig(config, 'pl', {});
     flagsLogosModule.generateQuestion('pl', true);
 
     assert.ok(document.getElementById('fl-context-badge'), 'Brak elementu #fl-context-badge');
     assert.ok(document.getElementById('fl-stage-body'), 'Brak elementu #fl-stage-body');
     assert.ok(document.getElementById('fl-hint-btn'), 'Brak przycisku #fl-hint-btn');
     assert.ok(document.getElementById('fl-hint-box'), 'Brak kontenera #fl-hint-box');
-  });
 
-  it('w konfiguratorze pozwala na jednokrotny wybór pomiędzy Flagami a Logotypami', () => {
-    const stage = document.getElementById('stage-container');
-    const config = document.getElementById('teacher-panel');
+    const img = document.getElementById('fl-flag-img');
+    assert.ok(img, 'Scena powinna wyświetlać obraz flagi');
+    assert.ok(img.getAttribute('src').startsWith('./assets/flags/'), 'Obraz flagi musi ładować lokalny plik offline');
 
-    flagsLogosModule.mountStage(stage, 'pl');
-    flagsLogosModule.mountConfig(config, 'pl', {});
-
-    const flagsBtn = config.querySelector('button[data-quiz-type="flags"]');
-    const logosBtn = config.querySelector('button[data-quiz-type="logos"]');
-    assert.ok(flagsBtn && logosBtn, 'Brak przycisków wyboru Flagi / Logotypy');
-
-    // Przełącz na Logotypy
-    logosBtn.click();
-    let payload = flagsLogosModule.getRankingPayload();
-    assert.strictEqual(payload.mode, 'logos');
-    assert.strictEqual(payload.meta.quizType, 'logos');
-    assert.ok(document.getElementById('fl-logo-svg'), 'Scena powinna wyświetlać wektorowe logo SVG');
-    assert.ok(
-      config.querySelectorAll('.fl-logo-cat-btn').length === 6,
-      'Powinno wyświetlić 6 kategorii logotypów'
-    );
-
-    // Przełącz z powrotem na Flagi
-    flagsBtn.click();
-    payload = flagsLogosModule.getRankingPayload();
-    assert.strictEqual(payload.mode, 'flags');
-    assert.strictEqual(payload.meta.quizType, 'flags');
-    assert.ok(document.getElementById('fl-flag-img'), 'Scena powinna wyświetlać obraz flagi');
-    assert.ok(
-      config.querySelectorAll('.fl-continent-btn').length === 6,
-      'Powinno wyświetlić 6 przycisków kontynentów'
-    );
+    assert.strictEqual(config.querySelector('button[data-quiz-type="logos"]'), null, 'Brak trybu logotypów w gałęzi biznesowej');
+    assert.strictEqual(config.querySelectorAll('.fl-continent-btn').length, 6, 'Powinno wyświetlić 6 przycisków kontynentów');
   });
 
   it('obsługuje wielokrotny wybór kontynentów dla flag (z blokadą odznaczenia ostatniego)', () => {
@@ -66,9 +44,6 @@ describe('flagsLogos - Moduł Flaga/Logo', () => {
 
     flagsLogosModule.mountStage(stage, 'pl');
     flagsLogosModule.mountConfig(config, 'pl', {});
-
-    // Upewnij się, że jesteśmy w trybie flag
-    config.querySelector('button[data-quiz-type="flags"]').click();
 
     // Zostaw tylko Europę i Azję
     for (const cont of ['africa', 'north_america', 'south_america', 'oceania']) {
@@ -104,45 +79,12 @@ describe('flagsLogos - Moduł Flaga/Logo', () => {
     assert.strictEqual(flagsLogosModule.getRankingPayload().meta.continents.length, 6);
   });
 
-  it('obsługuje wielokrotny wybór kategorii dla logotypów wraz z kategorią "Inne"', () => {
-    const stage = document.getElementById('stage-container');
-    const config = document.getElementById('teacher-panel');
-
-    flagsLogosModule.mountStage(stage, 'pl');
-    flagsLogosModule.mountConfig(config, 'pl', {});
-
-    // Przełącz na Logotypy
-    config.querySelector('button[data-quiz-type="logos"]').click();
-
-    // Odznacz wszystko poza "automotive" i "other"
-    for (const cat of ['tech', 'fashion', 'food', 'entertainment']) {
-      config.querySelector(`button[data-logo-cat="${cat}"]`).click();
-    }
-
-    let payload = flagsLogosModule.getRankingPayload();
-    assert.deepStrictEqual(payload.meta.categories.sort(), ['automotive', 'other']);
-
-    // Odznacz "automotive" -> zostaje tylko "other"
-    config.querySelector('button[data-logo-cat="automotive"]').click();
-    payload = flagsLogosModule.getRankingPayload();
-    assert.deepStrictEqual(payload.meta.categories, ['other']);
-
-    // Próba odznaczenia ostatniej kategorii ("other") jest zablokowana
-    config.querySelector('button[data-logo-cat="other"]').click();
-    assert.deepStrictEqual(flagsLogosModule.getRankingPayload().meta.categories, ['other']);
-
-    // Przywróć wszystkie kategorie
-    document.getElementById('fl-select-all-categories').click();
-    assert.strictEqual(flagsLogosModule.getRankingPayload().meta.categories.length, 6);
-  });
-
   it('wyświetla i ukrywa charakterystyczny opis w podpowiedzi oraz tłumaczy nazwy PL <-> EN', () => {
     const stage = document.getElementById('stage-container');
     const config = document.getElementById('teacher-panel');
 
     flagsLogosModule.mountStage(stage, 'pl');
     flagsLogosModule.mountConfig(config, 'pl', {});
-    config.querySelector('button[data-quiz-type="flags"]').click();
 
     const qPl = flagsLogosModule.generateQuestion('pl', true);
     assert.strictEqual(qPl.options.length, 4);

@@ -15,7 +15,7 @@ describe('app - Integracja powłoki aplikacji (App Shell & Quiz Engine)', () => 
     const tabs = document.querySelectorAll('#module-tabs button');
     assert.strictEqual(tabs.length, 4, 'Górny pasek powinien zawierać 4 zakładki przedmiotów');
     assert.strictEqual(tabs[0].textContent.trim(), '🕒 Zegar');
-    assert.strictEqual(tabs[3].textContent.trim(), '🚩 Flaga/Logo');
+    assert.strictEqual(tabs[3].textContent.trim(), '🚩 Flagi');
     assert.ok(tabs[0].classList.contains('bg-indigo-600'), 'Domyślnie aktywny powinien być moduł zegara');
 
     const scoreBadge = document.getElementById('score-badge');

@@ -1,0 +1,29 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.hand-transition {
+  transition: transform 0.5s cubic-bezier(0.4, 2.08, 0.55, 0.44);
+}
+
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  opacity: 1;
+}
+
+/* Zapobieganie przyklejaniu się obrysów focus/hover na urządzeniach mobilnych */
+.option-btn {
+  -webkit-tap-highlight-color: transparent;
+  outline: none !important;
+}
+
+@media (hover: hover) {
+  .option-btn:hover {
+    border-color: #6366f1;
+    background-color: #eef2ff;
+  }
+}
+
+.option-btn:focus-visible {
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.4);
+}

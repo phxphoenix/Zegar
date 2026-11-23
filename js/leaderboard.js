@@ -6,7 +6,9 @@
 
 import { i18n } from './i18n.js';
 
-const FIREBASE_DB_URL = 'https://zegar-eda05-default-rtdb.europe-west1.firebasedatabase.app';
+// W gałęzi biznesowej (RODO art. 8 / Google Play Families / Apple Kids)
+// ranking działa wyłącznie lokalnie na urządzeniu (bez wysyłania imion dzieci do otwartej bazy Firebase).
+const FIREBASE_DB_URL = '';
 const LEGACY_LOCAL_STORAGE_KEY = 'zegar_leaderboard_top10_v1';
 const LOCAL_STORAGE_BY_MODULE_KEY = 'zegar_leaderboards_by_module_v2';
 const LOCAL_STORAGE_NAME_KEY = 'zegar_last_player_name_v1';
@@ -469,13 +471,6 @@ export function updateRankingModalHeader(lang = 'pl', moduleId = null, subMode =
   }
 
   let modLabel = dict.modules[modId]?.navLabel || modId;
-  if (modId === 'flags_logos') {
-    const effectiveSub = subMode || leaderboardState.activeSubMode || 'flags';
-    const subLabel =
-      dict.flags_logos?.quizTypes?.[effectiveSub]?.short ||
-      (effectiveSub === 'logos' ? 'Logo' : 'Flagi');
-    modLabel = `${modLabel} (${subLabel})`;
-  }
 
   const titleEl = document.getElementById('ranking-modal-title');
   if (titleEl) {
@@ -490,45 +485,15 @@ export function renderRankingList(lang = 'pl', moduleId = null, subMode = null) 
   if (!container) return;
   const dict = i18n[lang];
   let targetModuleId = moduleId || leaderboardState.activeModuleId || 'clock';
-  if (targetModuleId === 'flags_logos_flags') {
+  if (targetModuleId === 'flags_logos_flags' || targetModuleId === 'flags_logos_logos') {
     targetModuleId = 'flags_logos';
     subMode = 'flags';
-  } else if (targetModuleId === 'flags_logos_logos') {
-    targetModuleId = 'flags_logos';
-    subMode = 'logos';
   }
 
-  syncActiveModuleList(targetModuleId, subMode);
-  updateRankingModalHeader(lang, targetModuleId, leaderboardState.activeSubMode);
+  syncActiveModuleList(targetModuleId, targetModuleId === 'flags_logos' ? 'flags' : subMode);
+  updateRankingModalHeader(lang, targetModuleId, 'flags');
 
   container.innerHTML = '';
-
-  // Przełącznik podkategorii rankingu dla modułu Flaga/Logo (Flagi vs Logotypy)
-  if (targetModuleId === 'flags_logos' && dict.flags_logos) {
-    const tabsWrapper = document.createElement('div');
-    tabsWrapper.id = 'ranking-submode-tabs';
-    tabsWrapper.className = 'grid grid-cols-2 gap-2 mb-3 p-1 bg-slate-100 rounded-2xl';
-
-    ['flags', 'logos'].forEach(modeKey => {
-      const isActive = leaderboardState.activeSubMode === modeKey;
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.setAttribute('data-ranking-submode', modeKey);
-      btn.className = isActive
-        ? 'py-2 px-3 rounded-xl font-extrabold text-xs sm:text-sm bg-indigo-600 text-white shadow-sm transition'
-        : 'py-2 px-3 rounded-xl font-bold text-xs sm:text-sm text-slate-600 hover:bg-slate-200/70 transition';
-      btn.textContent = dict.flags_logos.quizTypes[modeKey].label;
-      btn.addEventListener('click', () => {
-        if (leaderboardState.activeSubMode !== modeKey) {
-          leaderboardState.activeSubMode = modeKey;
-          renderRankingList(lang, 'flags_logos', modeKey);
-        }
-      });
-      tabsWrapper.appendChild(btn);
-    });
-
-    container.appendChild(tabsWrapper);
-  }
 
   if (!leaderboardState.list || leaderboardState.list.length === 0) {
     const emptyDiv = document.createElement('div');

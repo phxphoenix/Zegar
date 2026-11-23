@@ -16,6 +16,13 @@ import {
   renderRankingList,
   updateRankingModalHeader
 } from './leaderboard.js';
+import {
+  openParentalGate,
+  closeParentalGate,
+  submitParentalGate,
+  openParentZoneModal,
+  closeParentZoneModal
+} from './parentalGate.js';
 
 const appState = {
   activeModuleId: 'clock',
@@ -120,6 +127,11 @@ function updateShellLabels() {
     const mode = activeMod?.getRankingPayload?.()?.mode;
     questionTitle.textContent =
       (mode && modDict.questionTitleByMode?.[mode]) || modDict.questionTitle;
+  }
+
+  const parentZoneBtn = document.getElementById('parent-zone-btn');
+  if (parentZoneBtn && dict.parentZoneBtn) {
+    parentZoneBtn.textContent = dict.parentZoneBtn;
   }
 
   renderModuleTabs();
@@ -437,9 +449,32 @@ function initApp() {
     if (e.key === 'Enter') submitTop10Score(appState.lang);
   });
 
+  // Obsługa Strefy Rodzica i Bramki Rodzicielskiej
+  document.getElementById('parent-zone-btn')?.addEventListener('click', () => {
+    openParentalGate(appState.lang, () => openParentZoneModal(appState.lang));
+  });
+  document.getElementById('parental-gate-close-x')?.addEventListener('click', closeParentalGate);
+  document.getElementById('parental-gate-cancel')?.addEventListener('click', closeParentalGate);
+  document.getElementById('parental-gate-submit')?.addEventListener('click', submitParentalGate);
+  document.getElementById('parental-gate-input')?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') submitParentalGate();
+  });
+  document.getElementById('parental-gate-modal')?.addEventListener('click', (e) => {
+    if (e.target.id === 'parental-gate-modal') closeParentalGate();
+  });
+  document.getElementById('parent-zone-close-x')?.addEventListener('click', closeParentZoneModal);
+  document.getElementById('parent-zone-close-btn')?.addEventListener('click', closeParentZoneModal);
+  document.getElementById('parent-zone-modal')?.addEventListener('click', (e) => {
+    if (e.target.id === 'parent-zone-modal') closeParentZoneModal();
+  });
+
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
-      if (!document.getElementById('goodnight-modal').classList.contains('hidden')) {
+      if (document.getElementById('parental-gate-modal') && !document.getElementById('parental-gate-modal').classList.contains('hidden')) {
+        closeParentalGate();
+      } else if (document.getElementById('parent-zone-modal') && !document.getElementById('parent-zone-modal').classList.contains('hidden')) {
+        closeParentZoneModal();
+      } else if (!document.getElementById('goodnight-modal').classList.contains('hidden')) {
         closeGoodnightModal();
       } else if (!document.getElementById('ranking-modal').classList.contains('hidden')) {
         closeRankingModal();
