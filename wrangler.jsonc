@@ -1,0 +1,8 @@
+{
+  "name": "zegar-business",
+  "compatibility_date": "2026-11-25",
+  "assets": {
+    "directory": ".",
+    "not_found_handling": "single-page-application"
+  }
+}

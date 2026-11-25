@@ -1,0 +1,15 @@
+node_modules
+tests
+docs
+.git
+.github
+css/input.css
+package.json
+package-lock.json
+tailwind.config.js
+wrangler.jsonc
+.gitignore
+.assetsignore
+README.md
+README_EN.md
+CONTRIBUTING.md
