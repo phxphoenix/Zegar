@@ -58,10 +58,75 @@ export const i18n = {
     },
     parentZone: {
       title: '🛡️ Strefa Rodzica',
-      subtitle: 'Informacje prawne, prywatność dziecka i bezpieczeństwo aplikacji Akademia Bystrzaka.',
+      subtitle: 'Postępy dziecka, profile, karty pracy A4 oraz dokumenty prawne.',
       privacyLink: '🛡️ Polityka Prywatności (RODO / UE)',
       termsLink: '📄 Regulamin aplikacji',
-      offlineNote: 'Wszystkie wyniki rankingu są zapisywane wyłącznie lokalnie na tym urządzeniu.'
+      offlineNote: 'Wszystkie wyniki i statystyki zapisywane są wyłącznie lokalnie na tym urządzeniu.',
+      tabs: {
+        progress: '📊 Postępy',
+        profiles: '👨‍👩‍👧‍👦 Profile',
+        worksheets: '🖨️ Karty PDF',
+        settings: '⚙️ PRO i Prawo'
+      },
+      overallAccuracy: 'Ogólna skuteczność',
+      attemptsUnit: 'zadań',
+      noStatsYet: 'Brak zapisanych odpowiedzi dla tego profilu. Rozwiąż kilka zadań w quizie!',
+      mistakesTitle: 'Nad czym warto poćwiczyć (najczęstsze błędy):',
+      noMistakesYet: 'Świetnie! Brak zapisanych błędów do powtórki.',
+      resetStatsBtn: '🗑️ Wyczyść statystyki profilu',
+      profilesIntro: 'Zarządzaj profilami rodzeństwa (w wersji Darmowej: 1 profil, w Bystrzak PRO: do 4 profili).',
+      addProfilePlaceholder: 'Imię dziecka (np. Zosia)...',
+      addProfileBtn: '+ Dodaj profil',
+      profileActiveBadge: 'Aktywny',
+      profileLimitNote: 'Osiągnięto limit 4 profili PRO.',
+      profileProLockedNote: 'Dodawanie profili rodzeństwa (do 4 dzieci) dostępne w Bystrzak PRO.',
+      unlockProBtn: '⭐ Sprawdź Bystrzak PRO',
+      proStatusActive: 'Aktywny plan: ⭐ Bystrzak PRO',
+      proStatusFree: 'Aktywny plan: Darmowy (Zegar + Klasa 1 + Europa)',
+      proDemoToggleOn: 'Włącz podgląd PRO (tryb testowy)',
+      proDemoToggleOff: 'Wróć do wersji Darmowej (tryb testowy)'
+    },
+    worksheet: {
+      title: 'Generator Kart Pracy A4 (PDF)',
+      desc: 'Wygeneruj czarno-biały arkusz do wydruku w domu wraz z kluczem odpowiedzi dla rodzica na 2. stronie.',
+      typeLabel: 'Rodzaj arkusza',
+      gradeLabelSelect: 'Poziom klasy',
+      printBtn: '🖨️ Drukuj / Zapisz jako PDF',
+      sheetTitle: 'Akademia Bystrzaka – Karta Pracy',
+      answerKeyTitle: 'Klucz odpowiedzi (dla Rodzica)',
+      studentLabel: 'Uczeń',
+      dateLabel: 'Data',
+      gradeLabel: (g) => `Klasa ${g}`,
+      previewLimitNote: 'Podgląd wersji darmowej (4 zadania). Wersja Bystrzak PRO generuje pełne arkusze 12–20 zadań dla klas 1–3.',
+      types: {
+        math: '🧮 Matematyka',
+        orthography: '✍️ Ortografia',
+        mistakes: '🎯 Powtórka z błędów dziecka'
+      }
+    },
+    proOffer: {
+      title: '⭐ Bystrzak PRO – Pełna Akademia',
+      subtitle: 'Jednorazowe odblokowanie pełnej wersji edukacyjnej. Bez abonamentów i bez reklam dla dzieci.',
+      priceTag: '29 zł jednorazowo',
+      freeColTitle: 'Darmowa',
+      proColTitle: 'Bystrzak PRO',
+      freeFeatures: [
+        'Pełny moduł Zegar (cyfrowy i słowny)',
+        'Matematyka i Ortografia – Klasa 1',
+        'Flagi Europy + lokalny ranking',
+        '1 profil dziecka + podgląd karty PDF (4 zad.)'
+      ],
+      proFeatures: [
+        'Matematyka i Ortografia – Klasy 1, 2 i 3',
+        'Wszystkie 6 kontynentów Flag (197 państw)',
+        'Do 4 profili rodzeństwa na urządzeniu',
+        'Pełny Generator Kart Pracy PDF A4 (12–20 zad.)',
+        '100% bez reklam i bez subskrypcji'
+      ],
+      ctaBtn: '🚀 Odblokuj PRO (zapisz się na premierę)',
+      restoreBtn: 'Przywróć zakup',
+      fakeDoorThanks: '🎉 Dziękujemy za zainteresowanie! Wersja Bystrzak PRO startuje wkrótce — Twoja intencja została odnotowana. Możesz przetestować funkcje PRO w Strefie Rodzica (tryb testowy).',
+      restoreInfo: 'Przywracanie zakupów będzie aktywne po uruchomieniu płatności sklepowych (Google Play / App Store).'
     },
 
     // Nazwy modułów w górnym pasku
@@ -296,10 +361,75 @@ export const i18n = {
     },
     parentZone: {
       title: '🛡️ Parent Zone',
-      subtitle: 'Legal information, child privacy, and safety settings for Smart Kids Academy.',
+      subtitle: 'Child progress, sibling profiles, A4 worksheets, and legal documents.',
       privacyLink: '🛡️ Privacy Policy (GDPR / Kids)',
       termsLink: '📄 Terms of Service',
-      offlineNote: 'All leaderboard scores are saved exclusively locally on this device.'
+      offlineNote: 'All scores and statistics are saved exclusively locally on this device.',
+      tabs: {
+        progress: '📊 Progress',
+        profiles: '👨‍👩‍👧‍👦 Profiles',
+        worksheets: '🖨️ PDF Sheets',
+        settings: '⚙️ PRO & Legal'
+      },
+      overallAccuracy: 'Overall accuracy',
+      attemptsUnit: 'answers',
+      noStatsYet: 'No recorded answers for this profile yet. Solve a few quiz questions first!',
+      mistakesTitle: 'Areas to practice (most frequent mistakes):',
+      noMistakesYet: 'Great job! No recorded mistakes to review.',
+      resetStatsBtn: '🗑️ Clear profile statistics',
+      profilesIntro: 'Manage sibling profiles (Free tier: 1 profile, Smart Kids PRO: up to 4 profiles).',
+      addProfilePlaceholder: 'Child name (e.g. Sophie)...',
+      addProfileBtn: '+ Add profile',
+      profileActiveBadge: 'Active',
+      profileLimitNote: 'Maximum of 4 PRO profiles reached.',
+      profileProLockedNote: 'Adding sibling profiles (up to 4 kids) is available in Smart Kids PRO.',
+      unlockProBtn: '⭐ Explore Smart Kids PRO',
+      proStatusActive: 'Active plan: ⭐ Smart Kids PRO',
+      proStatusFree: 'Active plan: Free (Clock + Grade 1 + Europe)',
+      proDemoToggleOn: 'Enable PRO preview (test mode)',
+      proDemoToggleOff: 'Switch back to Free (test mode)'
+    },
+    worksheet: {
+      title: 'A4 Printable Worksheet Generator (PDF)',
+      desc: 'Generate a clean black-and-white A4 printable sheet with a Parent Answer Key on page 2.',
+      typeLabel: 'Worksheet topic',
+      gradeLabelSelect: 'Grade level',
+      printBtn: '🖨️ Print / Save as PDF',
+      sheetTitle: 'Smart Kids Academy – Worksheet',
+      answerKeyTitle: 'Answer Key (For Parents)',
+      studentLabel: 'Student',
+      dateLabel: 'Date',
+      gradeLabel: (g) => `Grade ${g}`,
+      previewLimitNote: 'Free preview (4 tasks). Smart Kids PRO generates full 12–20 task sheets for Grades 1–3.',
+      types: {
+        math: '🧮 Math',
+        orthography: '✍️ Polish Spelling',
+        mistakes: '🎯 Review Child Mistakes'
+      }
+    },
+    proOffer: {
+      title: '⭐ Smart Kids PRO – Full Academy',
+      subtitle: 'One-time unlock for the full educational suite. No subscriptions and zero ads for children.',
+      priceTag: '$6.99 one-time',
+      freeColTitle: 'Free',
+      proColTitle: 'Smart Kids PRO',
+      freeFeatures: [
+        'Full Clock module (digital & words)',
+        'Math & Polish Spelling – Grade 1',
+        'European Flags + local leaderboard',
+        '1 child profile + PDF sheet preview (4 tasks)'
+      ],
+      proFeatures: [
+        'Math & Polish Spelling – Grades 1, 2 & 3',
+        'All 6 Flag continents (197 countries)',
+        'Up to 4 sibling profiles on device',
+        'Full A4 PDF Worksheet Generator (12–20 tasks)',
+        '100% ad-free & no recurring subscription'
+      ],
+      ctaBtn: '🚀 Unlock PRO (Join launch waitlist)',
+      restoreBtn: 'Restore purchase',
+      fakeDoorThanks: '🎉 Thank you for your interest! Smart Kids PRO is launching soon — your interest has been noted. You can preview PRO features in Parent Zone (test mode).',
+      restoreInfo: 'Purchase restoration will be active once store billing (Google Play / App Store) is enabled.'
     },
 
     modules: {

@@ -1,6 +1,7 @@
 import { test, describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { createTestDOM } from './helpers/dom.js';
+import { setProStatus } from '../js/entitlements.js';
 import { mathModule } from '../js/modules/math.js';
 
 describe('math - Moduł matematyki (Klasy 1-3)', () => {
@@ -8,6 +9,7 @@ describe('math - Moduł matematyki (Klasy 1-3)', () => {
 
   beforeEach(() => {
     env = createTestDOM();
+    setProStatus(true);
   });
 
   it('posiada poprawne id modułu', () => {

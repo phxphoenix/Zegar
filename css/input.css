@@ -27,3 +27,112 @@ input[type="number"]::-webkit-outer-spin-button {
 .option-btn:focus-visible {
   box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.4);
 }
+
+/* Ukryty kontener wydruku kart pracy A4 na ekranie */
+#print-worksheet-root {
+  display: none;
+}
+
+/* Czysty czarno-biały układ druku A4 (oszczędność tuszu) */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 15mm;
+  }
+
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    display: block !important;
+    min-height: auto !important;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  #print-worksheet-root {
+    display: block !important;
+    font-family: Arial, Helvetica, sans-serif;
+    color: #000000;
+  }
+
+  .worksheet-page {
+    width: 100%;
+  }
+
+  .worksheet-answer-key {
+    page-break-before: always;
+    break-before: page;
+  }
+
+  .worksheet-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    border-bottom: 2px solid #000000;
+    padding-bottom: 10px;
+    margin-bottom: 18px;
+  }
+
+  .worksheet-header h1,
+  .worksheet-header h2 {
+    margin: 0 0 4px 0;
+    font-size: 20px;
+    font-weight: 700;
+  }
+
+  .worksheet-header p {
+    margin: 0;
+    font-size: 13px;
+  }
+
+  .worksheet-meta {
+    text-align: right;
+    font-size: 12px;
+    line-height: 1.5;
+  }
+
+  .worksheet-preview-note {
+    border: 1px dashed #333333;
+    padding: 8px 10px;
+    margin-bottom: 14px;
+    font-size: 11px;
+  }
+
+  .worksheet-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px 24px;
+  }
+
+  .worksheet-item {
+    border: 1px solid #cccccc;
+    border-radius: 6px;
+    padding: 12px 14px;
+    font-size: 16px;
+    display: flex;
+    gap: 8px;
+    align-items: baseline;
+    break-inside: avoid;
+  }
+
+  .worksheet-num {
+    font-weight: 700;
+    min-width: 24px;
+  }
+
+  .worksheet-answers-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 10px 16px;
+    font-size: 13px;
+  }
+
+  .worksheet-answer-item {
+    border-bottom: 1px solid #dddddd;
+    padding: 6px 2px;
+  }
+}

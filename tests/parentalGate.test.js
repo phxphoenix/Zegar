@@ -74,4 +74,36 @@ describe('parentalGate & zgodność biznesowa (Sprint 1)', () => {
     assert.ok(fs.existsSync(path.join(ROOT_DIR, 'privacy.html')), 'Brak pliku privacy.html (RODO)');
     assert.ok(fs.existsSync(path.join(ROOT_DIR, 'terms.html')), 'Brak pliku terms.html (Regulamin)');
   });
+
+  it('renderuje wszystkie 4 zakładki Strefy Rodzica i chroni ofertę PRO Bramką Rodzicielską', async () => {
+    const { openProOfferModal, closeProOfferModal, handleProOfferCtaClick } = await import('../js/parentalGate.js');
+    const { getProInterestStats } = await import('../js/entitlements.js');
+
+    openParentZoneModal('pl', 'progress');
+    const tabs = document.querySelectorAll('#parent-zone-tabs button');
+    assert.strictEqual(tabs.length, 4, 'Strefa Rodzica powinna mieć 4 zakładki');
+
+    // Przejście przez zakładki bez błędów
+    tabs[1].click(); // Profile
+    tabs[2].click(); // Karty PDF
+    assert.ok(document.getElementById('pz-print-ws-btn'), 'Zakładka Karty PDF powinna mieć przycisk drukowania');
+    tabs[3].click(); // PRO i Prawo
+    assert.ok(document.getElementById('parent-zone-privacy-link'), 'Zakładka PRO i Prawo powinna mieć link do RODO');
+    closeParentZoneModal();
+
+    // Oferta PRO otwierana przez Bramkę Rodzicielską
+    openParentalGate('pl', () => openProOfferModal('pl', 'math_grade_2'));
+    const proModal = document.getElementById('pro-offer-modal');
+    assert.ok(proModal.classList.contains('hidden'), 'Oferta PRO nie może być widoczna przed przejściem Bramki Rodzicielskiej');
+
+    const input = document.getElementById('parental-gate-input');
+    input.value = String(getCurrentGateAnswerForTest());
+    assert.strictEqual(submitParentalGate(), true);
+    assert.ok(!proModal.classList.contains('hidden'), 'Oferta PRO powinna się otworzyć po przejściu Bramki');
+
+    handleProOfferCtaClick();
+    assert.strictEqual(getProInterestStats().total, 1);
+    assert.ok(!document.getElementById('pro-offer-feedback').classList.contains('hidden'));
+    closeProOfferModal();
+  });
 });

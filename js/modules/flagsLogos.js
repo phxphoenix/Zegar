@@ -11,12 +11,13 @@ import {
   FLAG_CONTINENTS,
   FLAGS_DATA
 } from './flagsLogosData.js';
+import { canAccessContinent, FREE_CONTINENTS, isProUser } from '../entitlements.js';
 
 const ALL_CONTINENT_IDS = FLAG_CONTINENTS.map(c => c.id);
 
 const state = {
   quizType: 'flags',
-  continents: [...ALL_CONTINENT_IDS], // wielokrotny wybór dla flag
+  continents: [...FREE_CONTINENTS], // domyślnie Europa w Free, wszystkie 6 w PRO
   currentQuestion: null, // { item, optionItems, correctAnswer, options, quizType }
   hintVisible: false,
   recentIds: [],
@@ -25,8 +26,14 @@ const state = {
 
 let callbacks = {
   onQuestionReady: null,
-  onManualResetStreak: null
+  onManualResetStreak: null,
+  onProFeatureRequested: null
 };
+
+function sanitizeContinentsForEntitlements() {
+  const allowed = state.continents.filter(c => canAccessContinent(c));
+  state.continents = allowed.length > 0 ? allowed : [...FREE_CONTINENTS];
+}
 
 const CONTINENT_BADGE_STYLES = {
   europe: 'bg-blue-100 text-blue-800 border-blue-300',
@@ -253,10 +260,13 @@ export const flagsLogosModule = {
   mountConfig(configContainer, lang, hooks) {
     state.lang = lang;
     callbacks = { ...callbacks, ...hooks };
+    sanitizeContinentsForEntitlements();
 
     const renderConfigDOM = () => {
+      sanitizeContinentsForEntitlements();
       const currentDict = i18n[state.lang].flags_logos;
       const poolCount = getFilteredPool().length;
+      const pro = isProUser();
 
       configContainer.innerHTML = `
         <div class="flex items-center justify-between">
@@ -278,25 +288,29 @@ export const flagsLogosModule = {
           <div class="flex items-center justify-between mb-1.5">
             <label class="block text-xs font-semibold text-slate-500">${currentDict.lblContinents}</label>
             ${
-              state.continents.length < ALL_CONTINENT_IDS.length
+              pro && state.continents.length < ALL_CONTINENT_IDS.length
                 ? `<button id="fl-select-all-continents" type="button" class="text-xs font-bold text-indigo-600 hover:underline">${currentDict.selectAllBtn}</button>`
                 : ''
             }
           </div>
           <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
             ${ALL_CONTINENT_IDS.map(contKey => {
-              const active = state.continents.includes(contKey);
+              const locked = !canAccessContinent(contKey);
+              const active = state.continents.includes(contKey) && !locked;
               return `
                 <button
                   type="button"
                   data-continent="${contKey}"
+                  ${locked ? 'data-pro-locked="true"' : ''}
                   class="fl-continent-btn py-2 px-2.5 rounded-xl font-bold text-xs border-2 transition flex items-center justify-center gap-1 ${
                     active
                       ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
+                      : locked
+                      ? 'bg-slate-50 text-slate-400 border-dashed border-slate-300 hover:border-amber-400 hover:text-amber-700'
                       : 'bg-white text-slate-600 border-slate-200 hover:border-emerald-300'
                   }"
                 >
-                  ${currentDict.continents[contKey].label}
+                  ${currentDict.continents[contKey].label}${locked ? ' 🔒' : ''}
                 </button>
               `;
             }).join('')}
@@ -314,6 +328,12 @@ export const flagsLogosModule = {
       configContainer.querySelectorAll('.fl-continent-btn').forEach(btn => {
         btn.addEventListener('click', () => {
           const contKey = btn.getAttribute('data-continent');
+          if (!canAccessContinent(contKey)) {
+            if (callbacks.onProFeatureRequested) {
+              callbacks.onProFeatureRequested(`flags_continent_${contKey}`);
+            }
+            return;
+          }
           if (state.continents.includes(contKey)) {
             if (state.continents.length <= 1) return; // Zawsze min. 1 kontynent aktywny
             state.continents = state.continents.filter(c => c !== contKey);
@@ -330,6 +350,12 @@ export const flagsLogosModule = {
       });
 
       document.getElementById('fl-select-all-continents')?.addEventListener('click', () => {
+        if (!isProUser()) {
+          if (callbacks.onProFeatureRequested) {
+            callbacks.onProFeatureRequested('flags_all_continents');
+          }
+          return;
+        }
         state.continents = [...ALL_CONTINENT_IDS];
         renderConfigDOM();
         if (callbacks.onManualResetStreak) callbacks.onManualResetStreak(false);
@@ -345,6 +371,7 @@ export const flagsLogosModule = {
 
   generateQuestion(lang, randomize = true) {
     if (lang) state.lang = lang;
+    sanitizeContinentsForEntitlements();
     if (randomize || !state.currentQuestion) {
       const item = pickRandomItem();
       state.currentQuestion = buildQuestionFromItem(item, state.lang);
@@ -354,6 +381,7 @@ export const flagsLogosModule = {
     updateStageUI(state.lang);
 
     return {
+      prompt: `${state.currentQuestion.item?.emoji || '🚩'} ${state.currentQuestion.item?.code?.toUpperCase() || ''}`.trim(),
       correctAnswer: state.currentQuestion.correctAnswer,
       options: state.currentQuestion.options
     };

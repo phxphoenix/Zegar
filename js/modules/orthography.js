@@ -6,6 +6,7 @@
 
 import { i18n } from '../i18n.js';
 import { ORTHOGRAPHY_WORDS } from './orthographyData.js';
+import { canAccessOrthoGrade } from '../entitlements.js';
 
 const state = {
   grade: 1, // 1 | 2 | 3
@@ -21,7 +22,8 @@ const state = {
 
 let callbacks = {
   onQuestionReady: null,
-  onManualResetStreak: null
+  onManualResetStreak: null,
+  onProFeatureRequested: null
 };
 
 const CATEGORY_BADGE_STYLES = {
@@ -344,18 +346,22 @@ export const orthographyModule = {
           <label class="block text-xs font-semibold text-slate-500 mb-1.5">${currentDict.lblGrade}</label>
           <div class="grid grid-cols-3 gap-2">
             ${[1, 2, 3].map(g => {
-              const active = state.grade === g;
+              const locked = !canAccessOrthoGrade(g);
+              const active = state.grade === g && !locked;
               return `
                 <button
                   type="button"
                   data-grade="${g}"
+                  ${locked ? 'data-pro-locked="true"' : ''}
                   class="ortho-grade-btn py-2 px-2 rounded-xl font-bold text-xs sm:text-sm border-2 transition ${
                     active
                       ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
+                      : locked
+                      ? 'bg-slate-50 text-slate-400 border-dashed border-slate-300 hover:border-amber-400 hover:text-amber-700'
                       : 'bg-white text-slate-700 border-slate-200 hover:border-indigo-300'
                   }"
                 >
-                  ${currentDict.grades[g].name}
+                  ${currentDict.grades[g].name}${locked ? ' 🔒' : ''}
                 </button>
               `;
             }).join('')}
@@ -450,6 +456,12 @@ export const orthographyModule = {
       configContainer.querySelectorAll('.ortho-grade-btn').forEach(btn => {
         btn.addEventListener('click', () => {
           const selectedGrade = parseInt(btn.getAttribute('data-grade'), 10);
+          if (!canAccessOrthoGrade(selectedGrade)) {
+            if (callbacks.onProFeatureRequested) {
+              callbacks.onProFeatureRequested(`ortho_grade_${selectedGrade}`);
+            }
+            return;
+          }
           if (state.grade === selectedGrade) return;
           state.grade = selectedGrade;
           renderConfigDOM();
@@ -523,6 +535,9 @@ export const orthographyModule = {
 
   generateQuestion(lang, randomize = true) {
     if (lang) state.lang = lang;
+    if (!canAccessOrthoGrade(state.grade)) {
+      state.grade = 1;
+    }
     if (randomize || !state.currentQuestion) {
       const item = pickRandomWordItem();
       state.currentQuestion = buildQuestionFromItem(item);
@@ -532,6 +547,7 @@ export const orthographyModule = {
     updateOrthoStageUI(state.lang);
 
     return {
+      prompt: state.currentQuestion.item?.masked || state.currentQuestion.correctAnswer,
       correctAnswer: state.currentQuestion.correctAnswer,
       options: state.currentQuestion.options
     };

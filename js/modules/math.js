@@ -4,6 +4,7 @@
 // ============================================================================
 
 import { i18n } from '../i18n.js';
+import { canAccessMathGrade } from '../entitlements.js';
 
 const state = {
   grade: 1, // 1 | 2 | 3
@@ -15,7 +16,8 @@ const state = {
 
 let callbacks = {
   onQuestionReady: null,
-  onManualResetStreak: null
+  onManualResetStreak: null,
+  onProFeatureRequested: null
 };
 
 const OP_BADGE_STYLES = {
@@ -530,8 +532,14 @@ export const mathModule = {
   mountConfig(configContainer, lang, hooks) {
     state.lang = lang;
     callbacks = { ...callbacks, ...hooks };
+    if (!canAccessMathGrade(state.grade)) {
+      state.grade = 1;
+    }
 
     const renderConfigDOM = () => {
+      if (!canAccessMathGrade(state.grade)) {
+        state.grade = 1;
+      }
       const currentDict = i18n[state.lang].math;
       configContainer.innerHTML = `
         <div class="flex items-center justify-between">
@@ -546,18 +554,22 @@ export const mathModule = {
           <label id="math-lbl-grade" class="block text-xs font-semibold text-slate-500 mb-1.5">${currentDict.lblGrade}</label>
           <div class="grid grid-cols-3 gap-2">
             ${[1, 2, 3].map(g => {
-              const active = state.grade === g;
+              const locked = !canAccessMathGrade(g);
+              const active = state.grade === g && !locked;
               return `
                 <button
                   type="button"
                   data-grade="${g}"
+                  ${locked ? 'data-pro-locked="true"' : ''}
                   class="math-grade-btn py-2 px-2 rounded-xl font-bold text-xs sm:text-sm border-2 transition ${
                     active
                       ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
+                      : locked
+                      ? 'bg-slate-50 text-slate-400 border-dashed border-slate-300 hover:border-amber-400 hover:text-amber-700'
                       : 'bg-white text-slate-700 border-slate-200 hover:border-indigo-300'
                   }"
                 >
-                  ${currentDict.grades[g].name}
+                  ${currentDict.grades[g].name}${locked ? ' 🔒' : ''}
                 </button>
               `;
             }).join('')}
@@ -600,6 +612,12 @@ export const mathModule = {
       configContainer.querySelectorAll('.math-grade-btn').forEach(btn => {
         btn.addEventListener('click', () => {
           const selectedGrade = parseInt(btn.getAttribute('data-grade'), 10);
+          if (!canAccessMathGrade(selectedGrade)) {
+            if (callbacks.onProFeatureRequested) {
+              callbacks.onProFeatureRequested(`math_grade_${selectedGrade}`);
+            }
+            return;
+          }
           if (state.grade === selectedGrade) return;
           state.grade = selectedGrade;
           renderConfigDOM();
@@ -633,6 +651,9 @@ export const mathModule = {
 
   generateQuestion(lang, randomize = true) {
     if (lang) state.lang = lang;
+    if (!canAccessMathGrade(state.grade)) {
+      state.grade = 1;
+    }
     if (randomize || !state.currentQuestion) {
       const chosenOp = state.ops[Math.floor(Math.random() * state.ops.length)] || 'add';
       const raw = generateRawProblem(state.grade, chosenOp);
@@ -646,7 +667,9 @@ export const mathModule = {
 
     updateMathStageUI(state.lang);
 
+    const sym = i18n[state.lang].math.ops[state.currentQuestion.op]?.symbol || '+';
     return {
+      prompt: `${state.currentQuestion.a} ${sym} ${state.currentQuestion.b}`,
       correctAnswer: String(state.currentQuestion.answer),
       options: state.currentQuestion.options
     };

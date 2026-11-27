@@ -21,8 +21,15 @@ import {
   closeParentalGate,
   submitParentalGate,
   openParentZoneModal,
-  closeParentZoneModal
+  closeParentZoneModal,
+  openProOfferModal,
+  closeProOfferModal,
+  handleProOfferCtaClick,
+  handleProRestoreClick,
+  setParentZoneChangeListener
 } from './parentalGate.js';
+import { getActiveProfile } from './profiles.js';
+import { recordAnswer } from './progressTracker.js';
 
 const appState = {
   activeModuleId: 'clock',
@@ -32,6 +39,7 @@ const appState = {
   answered: false,
   options: [],
   correctAnswer: '',
+  currentPrompt: '',
   autoNextTimeout: null
 };
 
@@ -129,6 +137,12 @@ function updateShellLabels() {
       (mode && modDict.questionTitleByMode?.[mode]) || modDict.questionTitle;
   }
 
+  const profileBadge = document.getElementById('active-profile-badge');
+  if (profileBadge) {
+    const activeProfile = getActiveProfile();
+    profileBadge.textContent = `${activeProfile.avatar} ${activeProfile.name}`;
+  }
+
   const parentZoneBtn = document.getElementById('parent-zone-btn');
   if (parentZoneBtn && dict.parentZoneBtn) {
     parentZoneBtn.textContent = dict.parentZoneBtn;
@@ -142,6 +156,7 @@ function applyQuestionPayload(payload) {
   appState.answered = false;
   appState.correctAnswer = payload.correctAnswer;
   appState.options = payload.options;
+  appState.currentPrompt = payload.prompt || payload.correctAnswer;
 
   const feedback = document.getElementById('feedback-box');
   if (feedback) feedback.textContent = '';
@@ -175,10 +190,22 @@ async function checkAnswer(selected, btnElement) {
   const feedback = document.getElementById('feedback-box');
   const activeMod = getActiveModule();
 
+  const wasFirstAttempt = !appState.answered;
+
   if (selected === appState.correctAnswer) {
-    if (!appState.answered) {
+    if (wasFirstAttempt) {
       appState.score++;
       appState.answered = true;
+      const activeProfile = getActiveProfile();
+      recordAnswer({
+        profileId: activeProfile.id,
+        moduleId: appState.activeModuleId,
+        isCorrect: true,
+        prompt: appState.currentPrompt,
+        expectedAnswer: appState.correctAnswer,
+        givenAnswer: selected,
+        meta: activeMod?.getRankingPayload?.()?.meta || {}
+      });
     }
 
     const allBtns = document.querySelectorAll('#options-container button');
@@ -195,8 +222,21 @@ async function checkAnswer(selected, btnElement) {
       applyQuestionPayload(nextPayload);
     }, 1200);
   } else {
-    const achievedScore = !appState.answered ? appState.score : 0;
+    const achievedScore = wasFirstAttempt ? appState.score : 0;
     const rankingPayload = activeMod.getRankingPayload();
+
+    if (wasFirstAttempt) {
+      const activeProfile = getActiveProfile();
+      recordAnswer({
+        profileId: activeProfile.id,
+        moduleId: appState.activeModuleId,
+        isCorrect: false,
+        prompt: appState.currentPrompt,
+        expectedAnswer: appState.correctAnswer,
+        givenAnswer: selected,
+        meta: rankingPayload?.meta || {}
+      });
+    }
 
     appState.answered = true;
     appState.score = 0;
@@ -221,17 +261,16 @@ async function checkAnswer(selected, btnElement) {
   }
 }
 
-function switchModule(moduleId) {
-  clearAutoNext();
-  appState.activeModuleId = moduleId;
-  leaderboardState.activeModuleId = moduleId;
-  appState.score = 0;
+function requestProFeature(featureKey) {
+  // Wymóg Apple Kids Category 1.3 & Google Play Families: ekran oferty PRO zawsze za Bramką Rodzicielską!
+  openParentalGate(appState.lang, () => openProOfferModal(appState.lang, featureKey));
+}
 
+function mountActiveModuleConfig() {
   const activeMod = getActiveModule();
-  const stageContainer = document.getElementById('stage-container');
   const configContainer = document.getElementById('teacher-panel');
+  if (!activeMod || !configContainer) return;
 
-  activeMod.mountStage(stageContainer, appState.lang);
   activeMod.mountConfig(configContainer, appState.lang, {
     onQuestionReady: (payload) => applyQuestionPayload(payload),
     onManualResetStreak: (hideAfter) => {
@@ -241,8 +280,22 @@ function switchModule(moduleId) {
       } else {
         updateShellLabels();
       }
-    }
+    },
+    onProFeatureRequested: (featureKey) => requestProFeature(featureKey)
   });
+}
+
+function switchModule(moduleId) {
+  clearAutoNext();
+  appState.activeModuleId = moduleId;
+  leaderboardState.activeModuleId = moduleId;
+  appState.score = 0;
+
+  const activeMod = getActiveModule();
+  const stageContainer = document.getElementById('stage-container');
+
+  activeMod.mountStage(stageContainer, appState.lang);
+  mountActiveModuleConfig();
 
   updateShellLabels();
   const initialPayload = activeMod.generateQuestion(appState.lang, true);
@@ -468,10 +521,26 @@ function initApp() {
     if (e.target.id === 'parent-zone-modal') closeParentZoneModal();
   });
 
+  // Obsługa modala oferty Bystrzak PRO
+  document.getElementById('pro-offer-close-x')?.addEventListener('click', closeProOfferModal);
+  document.getElementById('pro-offer-cta-btn')?.addEventListener('click', handleProOfferCtaClick);
+  document.getElementById('pro-offer-restore-btn')?.addEventListener('click', handleProRestoreClick);
+  document.getElementById('pro-offer-modal')?.addEventListener('click', (e) => {
+    if (e.target.id === 'pro-offer-modal') closeProOfferModal();
+  });
+
+  // Synchronizacja UI po zmianie planu PRO (tryb testowy) lub aktywnego profilu dziecka
+  setParentZoneChangeListener(() => {
+    mountActiveModuleConfig();
+    updateShellLabels();
+  });
+
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
       if (document.getElementById('parental-gate-modal') && !document.getElementById('parental-gate-modal').classList.contains('hidden')) {
         closeParentalGate();
+      } else if (document.getElementById('pro-offer-modal') && !document.getElementById('pro-offer-modal').classList.contains('hidden')) {
+        closeProOfferModal();
       } else if (document.getElementById('parent-zone-modal') && !document.getElementById('parent-zone-modal').classList.contains('hidden')) {
         closeParentZoneModal();
       } else if (!document.getElementById('goodnight-modal').classList.contains('hidden')) {

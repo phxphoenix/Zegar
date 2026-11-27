@@ -1,6 +1,7 @@
 import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { createTestDOM } from './helpers/dom.js';
+import { setProStatus } from '../js/entitlements.js';
 import { flagsLogosModule } from '../js/modules/flagsLogos.js';
 import { FLAGS_DATA } from '../js/modules/flagsLogosData.js';
 
@@ -9,6 +10,7 @@ describe('flagsLogos - Moduł Flagi Świata (gałąź biznesowa)', () => {
 
   beforeEach(() => {
     env = createTestDOM();
+    setProStatus(true);
   });
 
   it('posiada poprawne id modułu ("flags_logos") i działa wyłącznie w trybie flag', () => {
@@ -44,6 +46,9 @@ describe('flagsLogos - Moduł Flagi Świata (gałąź biznesowa)', () => {
 
     flagsLogosModule.mountStage(stage, 'pl');
     flagsLogosModule.mountConfig(config, 'pl', {});
+
+    // Zaznacz wszystkie 6 kontynentów w trybie PRO
+    document.getElementById('fl-select-all-continents')?.click();
 
     // Zostaw tylko Europę i Azję
     for (const cont of ['africa', 'north_america', 'south_america', 'oceania']) {
